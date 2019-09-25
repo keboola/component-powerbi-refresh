@@ -110,7 +110,7 @@ class Component(KBCEnvHandler):
 
         refresh_url = "https://api.powerbi.com/v1.0/myorg/{0}datasets/{1}/refreshes".format(
             group_url, dataset)
-        
+
         header = {
             "Content-Type": "application/json",
             "Authorization": "Bearer {}".format(self.oauth_token)
@@ -124,7 +124,8 @@ class Component(KBCEnvHandler):
                 url=refresh_url, headers=header, data=payload)
 
             if response.status_code != 202:
-                logging.error("{0} : {1} refresh failed".format(response.status_code, dataset))
+                logging.error("{0} : {1} refresh failed".format(
+                    response.status_code, dataset))
                 return False
         except Exception as e:
             logging.error("{0} refresh failed: {1}".format(dataset, e))
