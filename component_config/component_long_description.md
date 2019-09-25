@@ -1,2 +1,1 @@
-Testing functional sample extractor for purposes of the python component template. 
-Implements partial Hubspot extractor using the public sandbox token.
+The sole purpose of this PowerBI Refresh Application is to create "refresh" requests to the configured datasets within the configured workspace.

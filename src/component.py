@@ -6,28 +6,29 @@ Template Component main class.
 import logging
 import logging_gelf.handlers
 import logging_gelf.formatters
-import sys
 import os
-import datetime # noqa
+import sys
+import json
+from datetime import datetime  # noqa
+import requests
 
 from kbc.env_handler import KBCEnvHandler
-from kbc.result import KBCTableDef # noqa
-from kbc.result import ResultWriter # noqa
+from kbc.result import KBCTableDef  # noqa
+from kbc.result import ResultWriter  # noqa
 
 
 # configuration variables
-KEY_API_TOKEN = '#api_token'
-KEY_PERIOD_FROM = 'period_from'
-KEY_ENDPOINTS = 'endpoints'
+KEY_DATASET = 'datasets'
+KEY_WORKSPACE = 'workspace'
 
-MANDATORY_PARS = [KEY_ENDPOINTS, KEY_API_TOKEN]
+MANDATORY_PARS = [
+    KEY_DATASET,
+    KEY_WORKSPACE
+]
 MANDATORY_IMAGE_PARS = []
 
 # Default Table Output Destination
 DEFAULT_TABLE_SOURCE = "/data/in/tables/"
-DEFAULT_TABLE_DESTINATION = "/data/out/tables/"
-DEFAULT_FILE_DESTINATION = "/data/out/files/"
-DEFAULT_FILE_SOURCE = "/data/in/files/"
 
 # Logging
 logging.basicConfig(
@@ -47,6 +48,7 @@ if 'KBC_LOGGER_ADDR' in os.environ and 'KBC_LOGGER_PORT' in os.environ:
     # remove default logging to stdout
     logger.removeHandler(logger.handlers[0])
 
+
 APP_VERSION = '0.0.1'
 
 
@@ -54,15 +56,6 @@ class Component(KBCEnvHandler):
 
     def __init__(self, debug=False):
         KBCEnvHandler.__init__(self, MANDATORY_PARS)
-        """
-        # override debug from config
-        if self.cfg_params.get('debug'):
-            debug = True
-        else:
-            debug = False
-
-        self.set_default_logger('DEBUG' if debug else 'INFO')
-        """
         logging.info('Running version %s', APP_VERSION)
         logging.info('Loading configuration...')
 
@@ -73,41 +66,116 @@ class Component(KBCEnvHandler):
             logging.error(e)
             exit(1)
 
-
-    def get_tables(self, tables, mapping):
+    def get_oauth_token(self, config):
         """
-        Evaluate input and output table names.
-        Only taking the first one into consideration!
-        mapping: input_mapping, output_mappings
+        Extracting OAuth Token out of Authorization
         """
-        # input file
-        table_list = []
-        for table in tables:
-            name = table["full_path"]
-            if mapping == "input_mapping":
-                destination = table["destination"]
-            elif mapping == "output_mapping" :
-                destination = table["source"]
-            table_list.append(destination)
 
-        return table_list
+        data = config["oauth_api"]["credentials"]
+        data_encrypted = json.loads(
+            config["oauth_api"]["credentials"]["#data"])
+        client_id = data["appKey"]
+        client_secret = data["#appSecret"]
+        refresh_token = data_encrypted["refresh_token"]
 
+        url = "https://login.microsoftonline.com/common/oauth2/token"
+        header = {
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
+        payload = {
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "grant_type": "refresh_token",
+            "resource": "https://analysis.windows.net/powerbi/api",
+            "refresh_token": refresh_token
+        }
+
+        response = requests.post(
+            url=url, headers=header, data=payload)
+
+        if response.status_code != 200:
+            logging.error(
+                "Unable to refresh access token. Please reset the account authorization.")
+            sys.exit(1)
+
+        data_r = response.json()
+        token = data_r["access_token"]
+
+        return token
+
+    def refresh_dataset(self, group_url, dataset):
+        """
+        Refreshing the entered dataset
+        """
+
+        refresh_url = "https://api.powerbi.com/v1.0/myorg/{0}datasets/{1}/refreshes".format(
+            group_url, dataset)
+        
+        header = {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer {}".format(self.oauth_token)
+        }
+        payload = {
+            "notifyOption": "MailOnFailure"
+        }
+
+        try:
+            response = requests.post(
+                url=refresh_url, headers=header, data=payload)
+
+            if response.status_code != 202:
+                logging.error("{0} : {1} refresh failed".format(response.status_code, dataset))
+                return False
+        except Exception as e:
+            logging.error("{0} refresh failed: {1}".format(dataset, e))
+            return False
+
+        return True
 
     def run(self):
         '''
         Main execution code
         '''
-        # Get proper list of tables
-        in_tables = self.configuration.get_input_tables()
-        out_tables = self.configuration.get_expected_output_tables()
-        in_table_names = self.get_tables(in_tables, 'input_mapping')
-        out_table_names = self.get_tables(out_tables, 'output_mapping')
-        logging.info("IN tables mapped: "+str(in_table_names))
-        logging.info("OUT tables mapped: "+str(out_table_names))
 
+        # Activate when oauth in KBC is ready
+        # Get Authorization Token
+        authorization = self.configuration.get_authorization()
+        self.oauth_token = self.get_oauth_token(authorization)
+
+        # Configuration parameters
         params = self.cfg_params  # noqa
+        # Error handler, if there is nothing in the configuration
+        if params == {}:
+            logging.error(
+                "There are no inputs in the configurations. Please configure.")
+            sys.exit(1)
+        workspace = params["workspace"]
+        dataset_array = params["datasets"]
+        # Handling input error
+        if len(dataset_array) == 0:
+            logging.error(
+                "Dataset configuration is missing. Please specify datasets.")
+            sys.exit(1)
 
-        logging.info("Extraction finished")
+        if workspace == "":
+            group_url = ""
+        else:
+            group_url = "groups/{}/".format(workspace)
+
+        success_list = []
+        failed_list = []
+        for dataset in dataset_array:
+            dataset_name = dataset["dataset_input"]
+            does_it_work = self.refresh_dataset(group_url, dataset_name)
+            if does_it_work:
+                success_list.append(dataset_name)
+            else:
+                failed_list.append(dataset_name)
+
+        logging.info("List refreshed: {}".format(success_list))
+        logging.info("List failed to refresh: {}".format(failed_list))
+
+        logging.info("PowerBI Refresh finished")
 
 
 """
