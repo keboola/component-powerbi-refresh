@@ -8,16 +8,18 @@
     "properties": {
         "workspace": {
             "type": "string",
-            "title": "Workspace",
+            "title": "PowerBI Workspace",
             "description": "Please leave this blank if user is trying to export into the signed-in account's workspace",
             "propertyOrder": 200
         },
         "datasets": {
             "type": "array",
-            "title": "Dataset",
+            "title": "PowerBI Datasets",
             "propertyOrder": 300,
             "format": "table",
+            "description": "Please enter the 'ID' of the dataset. *** Note: Not the 'Name' of the dataset ***",
             "items": {
+                "title": "dataset",
                 "properties": {
                     "dataset_input": {
                         "title": "Dataset ID",
