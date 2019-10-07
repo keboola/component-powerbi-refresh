@@ -129,7 +129,8 @@ class Component(KBCEnvHandler):
                 return False
         except Exception as e:
             logging.error("{0} refresh failed: {1}".format(dataset, e))
-            return False
+            # return False
+            sys.exit(1)
 
         return True
 
