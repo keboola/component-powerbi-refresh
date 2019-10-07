@@ -126,7 +126,8 @@ class Component(KBCEnvHandler):
             if response.status_code != 202:
                 logging.error("{0} : {1} refresh failed".format(
                     response.status_code, dataset))
-                return False
+                # return False
+                sys.exit(1)
         except Exception as e:
             logging.error("{0} refresh failed: {1}".format(dataset, e))
             # return False
