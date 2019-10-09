@@ -124,12 +124,16 @@ class Component(KBCEnvHandler):
                 url=refresh_url, headers=header, data=payload)
 
             if response.status_code != 202:
-                logging.error("{0} : {1} refresh failed".format(
-                    response.status_code, dataset))
+                # logging.error("{0} : {1} refresh failed".format(
+                #   response.status_code, dataset))
                 # return False
+                logging.error("Failed to refresh dataset: {}".format(dataset))
+                logging.error("Please validate your dataset inputs.")
                 sys.exit(1)
-        except Exception as e:
-            logging.error("{0} refresh failed: {1}".format(dataset, e))
+        except Exception:
+            # logging.error("{0} refresh failed: {1}".format(dataset, e))
+            logging.error("Failed to refresh dataset: {}".format(dataset))
+            logging.error("Please validate your dataset inputs.")
             # return False
             sys.exit(1)
 
@@ -176,7 +180,7 @@ class Component(KBCEnvHandler):
                 failed_list.append(dataset_name)
 
         logging.info("List refreshed: {}".format(success_list))
-        logging.info("List failed to refresh: {}".format(failed_list))
+        # logging.info("List failed to refresh: {}".format(failed_list))
 
         logging.info("PowerBI Refresh finished")
 
