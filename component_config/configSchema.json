@@ -10,7 +10,8 @@
             "type": "string",
             "title": "PowerBI Workspace",
             "description": "Please leave this blank if user is trying to export into the signed-in account's workspace",
-            "propertyOrder": 200
+            "propertyOrder": 200,
+            "default": ""
         },
         "datasets": {
             "type": "array",
@@ -20,10 +21,14 @@
             "description": "Please enter the 'ID' of the dataset. *** Note: Not the 'Name' of the dataset ***",
             "items": {
                 "title": "dataset",
+                "required": [
+                    "dataset_input"
+                ],
                 "properties": {
                     "dataset_input": {
                         "title": "Dataset ID",
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                     }
                 }
             },
