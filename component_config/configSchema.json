@@ -19,6 +19,7 @@
             "propertyOrder": 300,
             "format": "table",
             "description": "Please enter the 'ID' of the dataset. *** Note: Not the 'Name' of the dataset ***",
+            "uniqueItems": true,
             "items": {
                 "title": "dataset",
                 "required": [

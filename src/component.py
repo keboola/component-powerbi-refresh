@@ -164,6 +164,16 @@ class Component(KBCEnvHandler):
                 "Dataset configuration is missing. Please specify datasets.")
             sys.exit(1)
 
+        # handling empty dataset inputs
+        invalid_dataset = False
+        for dataset in dataset_array:
+            if dataset["dataset_input"] == '':
+                invalid_dataset = True
+        if invalid_dataset:
+            logging.error(
+                "Dataset IDs cannot be empty. Please enter Dataset ID.")
+            sys.exit(1)
+
         if workspace == "":
             group_url = ""
         else:
