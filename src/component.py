@@ -136,7 +136,8 @@ class Component(KBCEnvHandler):
                     continue
 
                 else:
-                    logging.error("Failed to refresh dataset: {}".format(dataset))
+                    logging.error(
+                        "Failed to refresh dataset: {}".format(dataset))
                     logging.error("Please validate your dataset inputs.")
                     sys.exit(1)
 
