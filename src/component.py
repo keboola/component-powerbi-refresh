@@ -11,6 +11,7 @@ import sys
 import json
 from datetime import datetime  # noqa
 import requests
+import time
 
 from kbc.env_handler import KBCEnvHandler
 from kbc.result import KBCTableDef  # noqa
@@ -119,23 +120,28 @@ class Component(KBCEnvHandler):
             "notifyOption": "MailOnFailure"
         }
 
-        try:
-            response = requests.post(
-                url=refresh_url, headers=header, data=payload)
+        attempts = 0
+        while attempts < 3:
 
-            if response.status_code != 202:
-                # logging.error("{0} : {1} refresh failed".format(
-                #   response.status_code, dataset))
-                # return False
+            try:
+                response = requests.post(
+                    url=refresh_url, headers=header, data=payload)
+
+                if response.status_code == 202:
+                    break
+                elif attempts < 2:
+                    time.sleep(5)
+                    attempts += 1
+                    continue
+                else:
+                    logging.error("Failed to refresh dataset: {}".format(dataset))
+                    logging.error("Please validate your dataset inputs.")
+                    sys.exit(1)
+
+            except Exception:
                 logging.error("Failed to refresh dataset: {}".format(dataset))
                 logging.error("Please validate your dataset inputs.")
                 sys.exit(1)
-        except Exception:
-            # logging.error("{0} refresh failed: {1}".format(dataset, e))
-            logging.error("Failed to refresh dataset: {}".format(dataset))
-            logging.error("Please validate your dataset inputs.")
-            # return False
-            sys.exit(1)
 
         return True
 
