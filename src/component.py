@@ -129,10 +129,12 @@ class Component(KBCEnvHandler):
 
                 if response.status_code == 202:
                     break
+
                 elif attempts < 2:
-                    time.sleep(5)
+                    time.sleep(10)
                     attempts += 1
                     continue
+
                 else:
                     logging.error("Failed to refresh dataset: {}".format(dataset))
                     logging.error("Please validate your dataset inputs.")
