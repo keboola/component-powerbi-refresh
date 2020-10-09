@@ -50,7 +50,7 @@ if 'KBC_LOGGER_ADDR' in os.environ and 'KBC_LOGGER_PORT' in os.environ:
     logger.removeHandler(logger.handlers[0])
 
 
-APP_VERSION = '0.0.2'
+APP_VERSION = '0.0.3'
 
 
 class Component(KBCEnvHandler):
