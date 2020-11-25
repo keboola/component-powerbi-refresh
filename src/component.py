@@ -91,16 +91,31 @@ class Component(KBCEnvHandler):
             "refresh_token": refresh_token
         }
 
-        response = requests.post(
-            url=url, headers=header, data=payload)
+        attempts = 0
+        while attempts < 3:
 
-        if response.status_code != 200:
-            logging.error(
-                "Unable to refresh access token. {} {}".format(
-                    response.status_code, response.reason))
-            logging.error(
-                "Unable to refresh access token. Please reset the account authorization.")
-            sys.exit(1)
+            try:
+                response = requests.post(
+                    url=url, headers=header, data=payload)
+
+                if response.status_code == 200:
+                    break
+
+                elif attempts < 2:
+                    wait_time = 2 ** (attempts + 3) 
+                    time.sleep(wait_time)
+                    attempts += 1
+                    continue
+
+                else:
+                    logging.error(
+                        "Unable to refresh access token. {} {}".format(
+                            response.status_code, response.reason))
+                    sys.exit(1)
+            except:
+                logging.error(
+                    "Try later or reset the account authorization.")
+                sys.exit(1)
 
         data_r = response.json()
         token = data_r["access_token"]
@@ -134,18 +149,17 @@ class Component(KBCEnvHandler):
                     break
 
                 elif attempts < 2:
-                    time.sleep(10)
+                    wait_time = 2 ** (attempts + 4) 
+                    time.sleep(wait_time)
                     attempts += 1
                     continue
 
                 else:
                     logging.error(
                         "Failed to refresh dataset: {}".format(dataset))
-                    logging.error("Please validate your dataset inputs.")
                     sys.exit(1)
 
             except Exception:
-                logging.error("Failed to refresh dataset: {}".format(dataset))
                 logging.error("Please validate your dataset inputs.")
                 sys.exit(1)
 
