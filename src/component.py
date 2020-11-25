@@ -102,7 +102,7 @@ class Component(KBCEnvHandler):
                     break
 
                 elif attempts < 2:
-                    wait_time = 2 ** (attempts + 3) 
+                    wait_time = 2 ** (attempts + 4) 
                     time.sleep(wait_time)
                     attempts += 1
                     continue
