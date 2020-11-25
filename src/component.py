@@ -102,7 +102,7 @@ class Component(KBCEnvHandler):
                     break
 
                 elif attempts < 2:
-                    wait_time = 2 ** (attempts + 4) 
+                    wait_time = 2 ** (attempts + 4)
                     time.sleep(wait_time)
                     attempts += 1
                     continue
@@ -112,7 +112,7 @@ class Component(KBCEnvHandler):
                         "Unable to refresh access token. {} {}".format(
                             response.status_code, response.reason))
                     sys.exit(1)
-            except:
+            except Exception:
                 logging.error(
                     "Try later or reset the account authorization.")
                 sys.exit(1)
@@ -149,7 +149,7 @@ class Component(KBCEnvHandler):
                     break
 
                 elif attempts < 2:
-                    wait_time = 2 ** (attempts + 4) 
+                    wait_time = 2 ** (attempts + 4)
                     time.sleep(wait_time)
                     attempts += 1
                     continue
