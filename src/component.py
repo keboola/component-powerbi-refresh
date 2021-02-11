@@ -50,7 +50,7 @@ if 'KBC_LOGGER_ADDR' in os.environ and 'KBC_LOGGER_PORT' in os.environ:
     logger.removeHandler(logger.handlers[0])
 
 
-APP_VERSION = '0.0.4'
+APP_VERSION = '0.0.5'
 
 
 class Component(KBCEnvHandler):
@@ -155,6 +155,7 @@ class Component(KBCEnvHandler):
                     continue
 
                 else:
+                    logging.error("Error Message: {}".format(response.text))
                     logging.error(
                         "Failed to refresh dataset: {}".format(dataset))
                     sys.exit(1)
