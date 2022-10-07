@@ -142,7 +142,10 @@ class Component(ComponentBase):
                     attempts += 1
                     continue
                 else:
-                    logging.error(f"Reached maximum attempts when refreshing dataset: {response.text}")
+                    msg = json.loads(response.text)
+                    logging.error(f"Reached maximum attempts when refreshing dataset: "
+                                  f"error_code: {msg['error']}"
+                                  f"error_message: {msg['message']}")
                     return False
             except Exception:
                 logging.error("Dataset refresh execution failed.")
@@ -193,9 +196,9 @@ class Component(ComponentBase):
 
         for dataset in self.dataset_array:
             dataset_name = dataset["dataset_input"]
-            response = None
 
             # Refresh dataset
+            response = None
             response = self.refresh_dataset(group_url, dataset_name)
             if response:
                 self.success_list.append(dataset_name)
