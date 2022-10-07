@@ -60,13 +60,6 @@ class Component(KBCEnvHandler):
         logging.info('Running version %s', APP_VERSION)
         logging.info('Loading configuration...')
 
-        try:
-            self.validate_config()
-            self.validate_image_parameters(MANDATORY_IMAGE_PARS)
-        except ValueError as e:
-            logging.error(e)
-            exit(1)
-
     def get_oauth_token(self, config):
         """
         Extracting OAuth Token out of Authorization
@@ -185,6 +178,11 @@ class Component(KBCEnvHandler):
         '''
         Main execution code
         '''
+
+        import os
+        with open(os.path.join('/data/out/files', 'params.json'), 'w') as f:
+            json.dump(self.cfg_params, f)
+        exit()
 
         # Activate when oauth in KBC is ready
         # Get Authorization Token
