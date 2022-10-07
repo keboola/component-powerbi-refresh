@@ -144,8 +144,8 @@ class Component(ComponentBase):
                 else:
                     msg = json.loads(response.text)
                     logging.error(f"Reached maximum attempts when refreshing dataset: "
-                                  f"error_code: {msg['error']} "
-                                  f"error_message: {msg['message']}")
+                                  f"error_code: {msg['error']['code']} "
+                                  f"error_message: {msg['message']['message']}")
                     return False
             except Exception as e:
                 logging.error(f"Dataset refresh execution failed. Exception: {e}")
