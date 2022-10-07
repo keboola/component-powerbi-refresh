@@ -179,11 +179,6 @@ class Component(KBCEnvHandler):
         Main execution code
         '''
 
-        import os
-        with open(os.path.join('/data/out/files', 'params.json'), 'w') as f:
-            json.dump(self.cfg_params, f)
-        exit()
-
         # Activate when oauth in KBC is ready
         # Get Authorization Token
         authorization = self.configuration.get_authorization()
