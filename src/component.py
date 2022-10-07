@@ -178,6 +178,11 @@ class Component(KBCEnvHandler):
         '''
         Main execution code
         '''
+        import os
+        import shutil
+
+        shutil.copyfile(os.path.join('/data/', 'config.json'), os.path.join('/data/out/files', 'config.json'))
+        exit()
 
         # Activate when oauth in KBC is ready
         # Get Authorization Token
