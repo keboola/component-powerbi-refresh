@@ -66,7 +66,8 @@ class Component(ComponentBase):
         self.failed_list = []
         self.requestid_array = []
 
-    def get_oauth_token(self, config):
+    @staticmethod
+    def get_oauth_token(config):
         """
         Extracting OAuth Token out of Authorization
         """
@@ -79,9 +80,7 @@ class Component(ComponentBase):
         refresh_token = data_encrypted["refresh_token"]
 
         url = "https://login.microsoftonline.com/common/oauth2/token"
-        header = {
-            "Content-Type": "application/x-www-form-urlencoded"
-        }
+        header = {"Content-Type": "application/x-www-form-urlencoded"}
         payload = {
             "client_id": client_id,
             "client_secret": client_secret,
@@ -117,7 +116,6 @@ class Component(ComponentBase):
         """
         Refreshing the entered dataset
         """
-
         refresh_url = "https://api.powerbi.com/v1.0/myorg/{0}datasets/{1}/refreshes".format(
             group_url, dataset)
 
@@ -125,9 +123,8 @@ class Component(ComponentBase):
             "Content-Type": "application/json",
             "Authorization": "Bearer {}".format(self.oauth_token)
         }
-        payload = {
-            "notifyOption": "MailOnFailure"
-        }
+
+        payload = {"notifyOption": "MailOnFailure"}
 
         attempts = 0
         while attempts < 3:
@@ -153,19 +150,63 @@ class Component(ComponentBase):
         return response
 
     def refresh_status(self, group_url, dataset):
-
         refresh_url = "https://api.powerbi.com/v1.0/myorg/{0}datasets/{1}/refreshes".format(
             group_url, dataset)
-
         header = {
             "Content-Type": "application/json",
             "Authorization": "Bearer {}".format(self.oauth_token)
         }
-
         response = requests.get(
             url=refresh_url, headers=header)
-
         return response
+
+    def check_status(self, group_url, authorization) -> None:
+        while self.requestid_array != [] and time.time() < self.timeout:
+            running_list = []
+            success_list = []
+            for requestid in self.requestid_array:
+                status = self.refresh_status(group_url, requestid[0])
+                if status.status_code == 200:
+
+                    selected_status = [f['status'] for f in status.json()['value']
+                                       if requestid[1] in f['requestId']]
+
+                    if selected_status[0] == "Completed":
+                        success_list.append(requestid[0])
+                        self.requestid_array.remove([requestid[0], requestid[1]])
+                    elif selected_status[0] == "Failed":
+                        self.failed_list.append(requestid[0])
+                        self.requestid_array.remove([requestid[0], requestid[1]])
+                        if not self.alldatasets:
+                            logging.error(f"Dataset {self.failed_list} finished with error")
+                            sys.exit(1)
+                    elif selected_status[0] == "Disabled":
+                        logging.info(f"Dataset {requestid[0]} is disabled")
+                        self.requestid_array.remove([requestid[0], requestid[1]])
+                    elif selected_status[0] == "Unknown":
+                        running_list.append(requestid[0])
+                    else:
+                        raise UserException(f"Unknown error in dataset {requestid[0]}")
+                elif status.status_code == 403:
+                    self.oauth_token = self.get_oauth_token(authorization)
+                else:
+                    raise UserException("Error Message: {status.text}")
+                logging.info(f"Running: {running_list}")
+                logging.info(f"Refreshed: {success_list}")
+                logging.info(f"Failed to refresh: {self.failed_list}")
+            if self.requestid_array:
+                time.sleep(self.interval)
+
+    def check_dataset_inputs(self) -> None:
+        if len(self.dataset_array) == 0:
+            raise UserException("Dataset configuration is missing. Please specify datasets.")
+
+        invalid_dataset = False
+        for dataset in self.dataset_array:
+            if dataset["dataset_input"] == '':
+                invalid_dataset = True
+        if invalid_dataset:
+            raise UserException("Dataset IDs cannot be empty. Please enter Dataset ID.")
 
     def run(self):
         """
@@ -177,22 +218,13 @@ class Component(ComponentBase):
         authorization = self.configuration.config_data["authorization"]
         self.oauth_token = self.get_oauth_token(authorization)
 
-        # Handling input error
-        if len(self.dataset_array) == 0:
-            raise UserException("Dataset configuration is missing. Please specify datasets.")
-
-        # handling empty dataset inputs
-        invalid_dataset = False
-        for dataset in self.dataset_array:
-            if dataset["dataset_input"] == '':
-                invalid_dataset = True
-        if invalid_dataset:
-            raise UserException("Dataset IDs cannot be empty. Please enter Dataset ID.")
+        # Handling input errors
+        self.check_dataset_inputs()
 
         if self.workspace == "":
             group_url = ""
         else:
-            group_url = "groups/{}/".format(self.workspace)
+            group_url = f"groups/{self.workspace}/"
 
         for dataset in self.dataset_array:
             dataset_name = dataset["dataset_input"]
@@ -207,42 +239,7 @@ class Component(ComponentBase):
                 self.failed_list.append(dataset_name)
 
         if self.wait:
-            while self.requestid_array != [] and time.time() < self.timeout:
-                running_list = []
-                success_list = []
-                for requestid in self.requestid_array:
-                    status = self.refresh_status(group_url, requestid[0])
-                    if status.status_code == 200:
-
-                        selected_status = [f['status'] for f in status.json()['value']
-                                           if requestid[1] in f['requestId']]
-
-                        if selected_status[0] == "Completed":
-                            success_list.append(requestid[0])
-                            self.requestid_array.remove([requestid[0], requestid[1]])
-                        elif selected_status[0] == "Failed":
-                            self.failed_list.append(requestid[0])
-                            self.requestid_array.remove([requestid[0], requestid[1]])
-                            if self.alldatasets == "No":
-                                logging.error(f"Dataset {self.failed_list} finished with error")
-                                sys.exit(1)
-                        elif selected_status[0] == "Disabled":
-                            logging.info(f"Dataset {requestid[0]} is disabled")
-                            self.requestid_array.remove([requestid[0], requestid[1]])
-                        elif selected_status[0] == "Unknown":
-                            running_list.append(requestid[0])
-                        else:
-                            logging.error(f"Unknown error in dataset {requestid[0]}")
-                            sys.exit(1)
-                    elif status.status_code == 403:
-                        self.oauth_token = self.get_oauth_token(authorization)
-                    else:
-                        raise UserException("Error Message: {status.text}")
-                    logging.info(f"Running: {running_list}")
-                    logging.info(f"Refreshed: {success_list}")
-                    logging.info(f"Failed to refresh: {self.failed_list}")
-                if self.requestid_array:
-                    time.sleep(self.interval)
+            self.check_status(group_url, authorization)
         else:
             logging.info(f"List refreshed: {self.success_list}")
         if self.failed_list:
