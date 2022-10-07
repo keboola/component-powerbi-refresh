@@ -62,6 +62,10 @@ class Component(ComponentBase):
         self.interval = self.configuration.parameters.get("interval")
         self.alldatasets = self.configuration.parameters.get("alldatasets")
 
+        self.success_list = []
+        self.failed_list = []
+        self.requestid_array = []
+
     def get_oauth_token(self, config):
         """
         Extracting OAuth Token out of Authorization
@@ -138,10 +142,11 @@ class Component(ComponentBase):
                     attempts += 1
                     continue
                 else:
-                    raise UserException(f"Reached maximum attempts when refreshing dataset: {response.text}")
+                    logging.error(f"Reached maximum attempts when refreshing dataset: {response.text}")
+                    return False
             except Exception:
-                raise UserException("Dataset refresh execution failed.")
-        logging.info(f"Response we got when trying to refresh dataset: {response.text}")
+                logging.error("Dataset refresh execution failed.")
+                return False
         return response
 
     def refresh_status(self, group_url, dataset):
@@ -186,24 +191,23 @@ class Component(ComponentBase):
         else:
             group_url = "groups/{}/".format(self.workspace)
 
-        success_list = []
-        failed_list = []
-        requestid_array = []
         for dataset in self.dataset_array:
             dataset_name = dataset["dataset_input"]
-            does_it_work = False
-            does_it_work = self.refresh_dataset(group_url, dataset_name)
-            if does_it_work:
-                success_list.append(dataset_name)
-                requestid_array.append([dataset_name, does_it_work.headers["RequestId"]])
+            response = None
+
+            # Refresh dataset
+            response = self.refresh_dataset(group_url, dataset_name)
+            if response:
+                self.success_list.append(dataset_name)
+                self.requestid_array.append([dataset_name, response.headers["RequestId"]])
             else:
-                failed_list.append(dataset_name)
+                self.failed_list.append(dataset_name)
 
         if self.wait:
-            while requestid_array != [] and time.time() < self.timeout:
+            while self.requestid_array != [] and time.time() < self.timeout:
                 running_list = []
                 success_list = []
-                for requestid in requestid_array:
+                for requestid in self.requestid_array:
                     status = self.refresh_status(group_url, requestid[0])
                     if status.status_code == 200:
 
@@ -212,16 +216,16 @@ class Component(ComponentBase):
 
                         if selected_status[0] == "Completed":
                             success_list.append(requestid[0])
-                            requestid_array.remove([requestid[0], requestid[1]])
+                            self.requestid_array.remove([requestid[0], requestid[1]])
                         elif selected_status[0] == "Failed":
-                            failed_list.append(requestid[0])
-                            requestid_array.remove([requestid[0], requestid[1]])
+                            self.failed_list.append(requestid[0])
+                            self.requestid_array.remove([requestid[0], requestid[1]])
                             if self.alldatasets == "No":
-                                logging.error(f"Dataset {failed_list} finished with error")
+                                logging.error(f"Dataset {self.failed_list} finished with error")
                                 sys.exit(1)
                         elif selected_status[0] == "Disabled":
                             logging.info(f"Dataset {requestid[0]} is disabled")
-                            requestid_array.remove([requestid[0], requestid[1]])
+                            self.requestid_array.remove([requestid[0], requestid[1]])
                         elif selected_status[0] == "Unknown":
                             running_list.append(requestid[0])
                         else:
@@ -231,14 +235,14 @@ class Component(ComponentBase):
                         self.oauth_token = self.get_oauth_token(authorization)
                     else:
                         raise UserException("Error Message: {status.text}")
-                    logging.info(f"List running: {running_list}")
-                    logging.info(f"List refreshed: {success_list}")
-                    logging.info(f"List failed to refresh: {failed_list}")
-                if requestid_array:
+                    logging.info(f"Running: {running_list}")
+                    logging.info(f"Refreshed: {success_list}")
+                    logging.info(f"Failed to refresh: {self.failed_list}")
+                if self.requestid_array:
                     time.sleep(self.interval)
         else:
-            logging.info(f"List refreshed: {success_list}")
-        if failed_list:
+            logging.info(f"List refreshed: {self.success_list}")
+        if self.failed_list:
             raise UserException("Any of dataset refreshes finished with error.")
 
         logging.info("PowerBI Refresh finished")
