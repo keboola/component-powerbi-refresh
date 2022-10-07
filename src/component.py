@@ -139,8 +139,8 @@ class Component(ComponentBase):
                     continue
                 else:
                     raise UserException(f"Reached maximum attempts when refreshing dataset: {response.text}")
-            except Exception as e:
-                raise UserException(f"Dataset refresh execution failed.")
+            except Exception:
+                raise UserException("Dataset refresh execution failed.")
         logging.info(f"Response we got when trying to refresh dataset: {response.text}")
         return response
 
