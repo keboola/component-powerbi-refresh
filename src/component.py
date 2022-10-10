@@ -12,6 +12,7 @@ import json
 from datetime import datetime  # noqa
 import requests
 import time
+from typing import Union
 
 from kbc.result import KBCTableDef  # noqa
 from kbc.result import ResultWriter  # noqa
@@ -112,7 +113,7 @@ class Component(ComponentBase):
         data_r = response.json()
         return data_r["access_token"]
 
-    def refresh_dataset(self, group_url, dataset):
+    def refresh_dataset(self, group_url, dataset) -> Union[requests.models.Response, bool]:
         """
         Refreshing the entered dataset
         """
@@ -165,10 +166,10 @@ class Component(ComponentBase):
             running_list = []
             success_list = []
             for requestid in self.requestid_array:
-                status = self.refresh_status(group_url, requestid[0])
-                if status.status_code == 200:
+                request = self.refresh_status(group_url, requestid[0])
+                if request.status_code == 200:
 
-                    selected_status = [f['status'] for f in status.json()['value']
+                    selected_status = [f['status'] for f in request.json()['value']
                                        if requestid[1] in f['requestId']]
 
                     if selected_status[0] == "Completed":
@@ -178,7 +179,9 @@ class Component(ComponentBase):
                         self.failed_list.append(requestid[0])
                         self.requestid_array.remove([requestid[0], requestid[1]])
                         if not self.alldatasets:
-                            logging.error(f"Dataset {self.failed_list} finished with error")
+                            content = json.loads(request.content)
+                            logging.error(f"Dataset {self.failed_list} finished"
+                                          f" with error {content['value'][1]['serviceExceptionJson']}")
                             sys.exit(1)
                     elif selected_status[0] == "Disabled":
                         logging.info(f"Dataset {requestid[0]} is disabled")
@@ -187,7 +190,7 @@ class Component(ComponentBase):
                         running_list.append(requestid[0])
                     else:
                         raise UserException(f"Unknown error in dataset {requestid[0]}")
-                elif status.status_code == 403:
+                elif request.status_code == 403:
                     self.oauth_token = self.get_oauth_token(authorization)
                 else:
                     raise UserException("Error Message: {status.text}")
@@ -230,7 +233,6 @@ class Component(ComponentBase):
             dataset_name = dataset["dataset_input"]
 
             # Refresh dataset
-            response = None
             response = self.refresh_dataset(group_url, dataset_name)
             if response:
                 self.success_list.append(dataset_name)
