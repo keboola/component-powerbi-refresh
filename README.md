@@ -27,7 +27,7 @@ If you need more endpoints, please submit your request to
 Configuration
 =============
 
-##PowerBI Refresh Configuration
+### PowerBI Refresh Configuration
  - PowerBI Workspace (workspace) - [REQ] Please leave this blank if user is trying to export into the signed-in account's workspace
  - PowerBI Datasets (datasets) - [REQ] Please enter the 'ID' of the dataset. Note: Not the 'Name' of the dataset
  - Wait for end (wait) - [OPT] Check dataset refresh status after refresh request
