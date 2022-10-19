@@ -9,3 +9,15 @@ Be aware! Each 'PowerBI Refresh' application's configuration can only work with 
 
 2. PowerBI Datasets
     - IDs of the PowerBI Datasets within the configured workspace the user wish to refresh
+	
+3. Wait for end
+	- Check dataset refresh status after refresh request
+	
+4. Wait for all datasets
+	- End job with error if any of datasets finish with failed status (Works only when "Wait for end" is Yes)
+	
+5. Interval
+	- Status check interval (Works only when "Wait for end" is Yes)
+	
+6. Timeout
+	- Status check timeout (Works only when "Wait for end" is Yes)

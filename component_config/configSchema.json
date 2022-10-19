@@ -34,6 +34,40 @@
                 }
             },
             "minItems": 1
+        },
+        "wait": {
+            "enum": [
+              "Yes",
+              "No"
+            ],
+            "type": "string",
+            "title": "Wait for end",
+            "default": "No",
+            "propertyOrder": 400
+        },
+        "alldatasets": {
+            "enum": [
+              "Yes",
+              "No"
+            ],
+            "type": "string",
+            "title": "Wait for all datasets",
+            "default": "No",
+            "propertyOrder": 450
+        },
+        "interval": {
+            "type": "integer",
+            "title": "Interval",
+            "default": 30,
+            "description": "seconds",
+            "propertyOrder": 500
+        },
+        "timeout": {
+            "type": "integer",
+            "title": "Timeout",
+            "default": 3600,
+            "description": "seconds",
+            "propertyOrder": 550
         }
     }
-}
+  }
