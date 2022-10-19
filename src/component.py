@@ -59,7 +59,10 @@ class Component(ComponentBase):
         self.workspace = self.configuration.parameters.get("workspace")
         self.dataset_array = self.configuration.parameters.get("datasets")
         self.wait = self.configuration.parameters.get("wait")
-        self.timeout = time.time() + self.configuration.parameters.get("timeout")
+        try:
+            self.timeout = time.time() + self.configuration.parameters.get("timeout")
+        except TypeError:
+            self.timeout = 7200
         self.interval = self.configuration.parameters.get("interval")
         self.alldatasets = self.configuration.parameters.get("alldatasets")
 
