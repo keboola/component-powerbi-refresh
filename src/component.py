@@ -70,6 +70,15 @@ class Component(ComponentBase):
         self.failed_list = []
         self.requestid_array = []
 
+        if self.wait == "No":
+            self.wait = False
+        else:
+            self.wait = True
+        if self.alldatasets == "No":
+            self.alldatasets = False
+        else:
+            self.alldatasets = True
+
     @staticmethod
     def get_oauth_token(config):
         """
@@ -248,7 +257,7 @@ class Component(ComponentBase):
         else:
             logging.info(f"List refreshed: {self.success_list}")
         if self.failed_list:
-            raise UserException("Any of dataset refreshes finished with error.")
+            raise UserException(f"Any of dataset refreshes finished with error. {self.failed_list}")
 
         logging.info("PowerBI Refresh finished")
 
