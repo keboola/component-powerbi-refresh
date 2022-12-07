@@ -81,6 +81,7 @@ class Component(ComponentBase):
             dataset_name = dataset["dataset_input"]
 
             # Refresh dataset
+            logging.info(f"Refreshing dataset {dataset_name}")
             response = self.refresh_dataset(group_url, dataset_name)
             if response:
                 self.success_list.append(dataset_name)
