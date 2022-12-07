@@ -3,21 +3,20 @@ Template Component main class.
 
 """
 
-import logging
-import logging_gelf.handlers
-import logging_gelf.formatters
-import os
-import sys
 import json
-from datetime import datetime  # noqa
-import requests
+import logging
+import os
 import time
+from datetime import datetime  # noqa
 from typing import Union
 
+import logging_gelf.formatters
+import logging_gelf.handlers
+import requests
 from kbc.result import KBCTableDef  # noqa
 from kbc.result import ResultWriter  # noqa
-from keboola.component.exceptions import UserException
 from keboola.component.base import ComponentBase
+from keboola.component.exceptions import UserException
 
 # configuration variables
 KEY_DATASET = 'datasets'
@@ -192,9 +191,9 @@ class Component(ComponentBase):
                         self.requestid_array.remove([requestid[0], requestid[1]])
                         if not self.alldatasets:
                             content = json.loads(request.content)
-                            logging.error(f"Dataset {self.failed_list} finished"
-                                          f" with error {content['value'][1]['serviceExceptionJson']}")
-                            sys.exit(1)
+                            raise UserException(f"Dataset {self.failed_list} finished"
+                                                f" with error {content['value'][1]['serviceExceptionJson']}")
+
                     elif selected_status[0] == "Disabled":
                         logging.info(f"Dataset {requestid[0]} is disabled")
                         self.requestid_array.remove([requestid[0], requestid[1]])
