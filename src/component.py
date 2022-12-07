@@ -5,13 +5,10 @@ Template Component main class.
 
 import json
 import logging
-import os
 import time
 from datetime import datetime  # noqa
 from typing import Union
 
-import logging_gelf.formatters
-import logging_gelf.handlers
 import requests
 from kbc.result import KBCTableDef  # noqa
 from kbc.result import ResultWriter  # noqa
@@ -30,23 +27,6 @@ REQUIRED_PARAMETERS = [
 # Default Table Output Destination
 DEFAULT_TABLE_SOURCE = "/data/in/tables/"
 
-# Logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)-8s : [line:%(lineno)3s] %(message)s',
-    datefmt="%Y-%m-%d %H:%M:%S")
-
-if 'KBC_LOGGER_ADDR' in os.environ and 'KBC_LOGGER_PORT' in os.environ:
-    logger = logging.getLogger()
-    logging_gelf_handler = logging_gelf.handlers.GELFTCPSocketHandler(
-        host=os.getenv('KBC_LOGGER_ADDR'), port=int(os.getenv('KBC_LOGGER_PORT')))
-    logging_gelf_handler.setFormatter(
-        logging_gelf.formatters.GELFFormatter(null_character=True))
-    logger.addHandler(logging_gelf_handler)
-
-    # remove default logging to stdout
-    logger.removeHandler(logger.handlers[0])
-
 
 class Component(ComponentBase):
 
@@ -58,6 +38,7 @@ class Component(ComponentBase):
         self.workspace = self.configuration.parameters.get("workspace")
         self.dataset_array = self.configuration.parameters.get("datasets")
         self.wait = self.configuration.parameters.get("wait")
+
         try:
             self.timeout = time.time() + self.configuration.parameters.get("timeout")
         except TypeError:
