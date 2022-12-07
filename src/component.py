@@ -59,6 +59,45 @@ class Component(ComponentBase):
         else:
             self.alldatasets = True
 
+    def run(self):
+        """
+        Main execution code
+        """
+
+        # Activate when oauth in KBC is ready
+        # Get Authorization Token
+        authorization = self.configuration.config_data["authorization"]
+        self.oauth_token = self.get_oauth_token(authorization)
+
+        # Handling input errors
+        self.check_dataset_inputs()
+
+        if self.workspace == "":
+            group_url = ""
+        else:
+            group_url = f"groups/{self.workspace}/"
+
+        for dataset in self.dataset_array:
+            dataset_name = dataset["dataset_input"]
+
+            # Refresh dataset
+            logging.info(f"Refreshing dataset {dataset_name}")
+            response = self.refresh_dataset(group_url, dataset_name)
+            if response:
+                self.success_list.append(dataset_name)
+                self.requestid_array.append([dataset_name, response.headers["RequestId"]])
+            else:
+                self.failed_list.append(dataset_name)
+
+        if self.wait:
+            self.check_status(group_url, authorization)
+        else:
+            logging.info(f"List refreshed: {self.success_list}")
+        if self.failed_list:
+            raise UserException(f"Any of dataset refreshes finished with error. {self.failed_list}")
+
+        logging.info("PowerBI Refresh finished")
+
     @staticmethod
     def get_oauth_token(config):
         """
@@ -202,44 +241,6 @@ class Component(ComponentBase):
                 invalid_dataset = True
         if invalid_dataset:
             raise UserException("Dataset IDs cannot be empty. Please enter Dataset ID.")
-
-    def run(self):
-        """
-        Main execution code
-        """
-
-        # Activate when oauth in KBC is ready
-        # Get Authorization Token
-        authorization = self.configuration.config_data["authorization"]
-        self.oauth_token = self.get_oauth_token(authorization)
-
-        # Handling input errors
-        self.check_dataset_inputs()
-
-        if self.workspace == "":
-            group_url = ""
-        else:
-            group_url = f"groups/{self.workspace}/"
-
-        for dataset in self.dataset_array:
-            dataset_name = dataset["dataset_input"]
-
-            # Refresh dataset
-            response = self.refresh_dataset(group_url, dataset_name)
-            if response:
-                self.success_list.append(dataset_name)
-                self.requestid_array.append([dataset_name, response.headers["RequestId"]])
-            else:
-                self.failed_list.append(dataset_name)
-
-        if self.wait:
-            self.check_status(group_url, authorization)
-        else:
-            logging.info(f"List refreshed: {self.success_list}")
-        if self.failed_list:
-            raise UserException(f"Any of dataset refreshes finished with error. {self.failed_list}")
-
-        logging.info("PowerBI Refresh finished")
 
 
 """
