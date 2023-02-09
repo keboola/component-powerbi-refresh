@@ -29,58 +29,34 @@ DEFAULT_TABLE_SOURCE = "/data/in/tables/"
 
 
 class Component(ComponentBase):
-
     def __init__(self):
         super().__init__()
+        self.authorization = None
         self.oauth_token = None
         self.validate_configuration_parameters(REQUIRED_PARAMETERS)
 
-        self.workspace = self.configuration.parameters.get("workspace")
-        self.dataset_array = self.configuration.parameters.get("datasets")
-        self.wait = self.configuration.parameters.get("wait")
+        parameters = self.configuration.parameters
 
-        try:
-            self.timeout = time.time() + self.configuration.parameters.get("timeout")
-        except TypeError:
-            self.timeout = 7200
-        self.interval = self.configuration.parameters.get("interval")
-        self.alldatasets = self.configuration.parameters.get("alldatasets")
+        self.workspace = parameters.get("workspace")
+        self.dataset_array = parameters.get("datasets")
+        self.wait = parameters.get("wait", "No") == "Yes"
+        self.timeout = time.time() + parameters.get("timeout", 7200)
+        self.interval = parameters.get("interval")
+        self.alldatasets = parameters.get("alldatasets", "No") == "Yes"
 
         self.success_list = []
         self.failed_list = []
         self.requestid_array = []
 
-        if self.wait == "No":
-            self.wait = False
-        else:
-            self.wait = True
-        if self.alldatasets == "No":
-            self.alldatasets = False
-        else:
-            self.alldatasets = True
-
     def run(self):
-        """
-        Main execution code
-        """
+        self.authorization = self.configuration.config_data["authorization"]
+        self.oauth_token = self.get_oauth_token()
 
-        # Activate when oauth in KBC is ready
-        # Get Authorization Token
-        authorization = self.configuration.config_data["authorization"]
-        self.oauth_token = self.get_oauth_token(authorization)
-
-        # Handling input errors
         self.check_dataset_inputs()
-
-        if self.workspace == "":
-            group_url = ""
-        else:
-            group_url = f"groups/{self.workspace}/"
+        group_url = f"groups/{self.workspace}" if self.workspace else ""
 
         for dataset in self.dataset_array:
             dataset_name = dataset["dataset_input"]
-
-            # Refresh dataset
             logging.info(f"Refreshing dataset {dataset_name}")
             response = self.refresh_dataset(group_url, dataset_name)
             if response:
@@ -90,26 +66,25 @@ class Component(ComponentBase):
                 self.failed_list.append(dataset_name)
 
         if self.wait:
-            self.check_status(group_url, authorization)
+            self.check_status(group_url)
         else:
             logging.info(f"List refreshed: {self.success_list}")
+
         if self.failed_list:
             raise UserException(f"Any of dataset refreshes finished with error. {self.failed_list}")
 
         logging.info("PowerBI Refresh finished")
 
-    @staticmethod
-    def get_oauth_token(config):
+    def get_oauth_token(self):
         """
-        Extracting OAuth Token out of Authorization
+        Extracting OAuth Token from Authorization
         """
-
-        data = config["oauth_api"]["credentials"]
-        data_encrypted = json.loads(
-            config["oauth_api"]["credentials"]["#data"])
-        client_id = data["appKey"]
-        client_secret = data["#appSecret"]
-        refresh_token = data_encrypted["refresh_token"]
+        config = self.authorization
+        credentials = config["oauth_api"]["credentials"]
+        client_id = credentials["appKey"]
+        client_secret = credentials["#appSecret"]
+        encrypted_data = json.loads(credentials["#data"])
+        refresh_token = encrypted_data["refresh_token"]
 
         url = "https://login.microsoftonline.com/common/oauth2/token"
         header = {"Content-Type": "application/x-www-form-urlencoded"}
@@ -121,64 +96,47 @@ class Component(ComponentBase):
             "refresh_token": refresh_token
         }
 
-        attempts = 0
-        while attempts < 3:
+        for attempts in range(3):
             try:
-                response = requests.post(
-                    url=url, headers=header, data=payload)
+                response = requests.post(url, headers=header, data=payload)
                 if response.status_code == 200:
                     break
                 elif attempts < 2:
-                    wait_time = 2 ** (attempts + 4)
-                    time.sleep(wait_time)
-                    attempts += 1
-                    continue
+                    time.sleep(2 ** (attempts + 4))
                 else:
                     raise UserException(
-                        "Unable to refresh access token. {} {}".format(
-                            response.status_code, response.reason))
+                        "Unable to refresh access token. {} {}".format(response.status_code, response.reason))
             except Exception:
-                raise UserException(
-                    "Try later or reset the account authorization.")
+                raise UserException("Try later or reset the account authorization.")
 
-        data_r = response.json()
-        return data_r["access_token"]
+        return response.json()["access_token"]
 
     def refresh_dataset(self, group_url, dataset) -> Union[requests.models.Response, bool]:
-        """
-        Refreshing the entered dataset
-        """
-        refresh_url = "https://api.powerbi.com/v1.0/myorg/{0}datasets/{1}/refreshes".format(
-            group_url, dataset)
-
+        refresh_url = f"https://api.powerbi.com/v1.0/myorg/{group_url}datasets/{dataset}/refreshes"
         header = {
             "Content-Type": "application/json",
             "Authorization": "Bearer {}".format(self.oauth_token)
         }
-
         payload = {"notifyOption": "MailOnFailure"}
+        response = False
 
-        attempts = 0
-        while attempts < 3:
+        for attempts in range(3):
             try:
-                response = requests.post(
-                    url=refresh_url, headers=header, data=payload)
+                response = requests.post(refresh_url, headers=header, data=payload)
                 if response.status_code == 202:
-                    break
-                elif attempts < 2:
-                    wait_time = 2 ** (attempts + 4)
-                    time.sleep(wait_time)
-                    attempts += 1
+                    return response
+                if attempts < 2:
+                    time.sleep(2 ** (attempts + 4))
                     continue
                 else:
                     msg = json.loads(response.text)
-                    logging.error(f"Reached maximum attempts when refreshing dataset: "
-                                  f"error_code: {msg['error']['code']} "
-                                  f"error_message: {msg['error']['message']}")
+                    logging.error(
+                        f"Failed to refresh dataset: error code: {msg['error']['code']} message: {msg['error']['message']}")
                     return False
             except Exception as e:
-                logging.error(f"Dataset refresh execution failed. Exception: {e}")
+                logging.error(f"Dataset refresh failed. Exception: {e}")
                 return False
+
         return response
 
     def refresh_status(self, group_url, dataset):
@@ -192,7 +150,7 @@ class Component(ComponentBase):
             url=refresh_url, headers=header)
         return response
 
-    def check_status(self, group_url, authorization) -> None:
+    def check_status(self, group_url) -> None:
         while self.requestid_array != [] and time.time() < self.timeout:
             running_list = []
             success_list = []
@@ -222,7 +180,7 @@ class Component(ComponentBase):
                     else:
                         raise UserException(f"Unknown error in dataset {requestid[0]}")
                 elif request.status_code == 403:
-                    self.oauth_token = self.get_oauth_token(authorization)
+                    self.oauth_token = self.get_oauth_token()
                 else:
                     raise UserException("Error Message: {status.text}")
                 logging.info(f"Running: {running_list}")
@@ -232,14 +190,16 @@ class Component(ComponentBase):
                 time.sleep(self.interval)
 
     def check_dataset_inputs(self) -> None:
-        if len(self.dataset_array) == 0:
+        """
+        Validates the dataset inputs.
+
+        Raises:
+            UserException: If the dataset configuration is missing or if any of the dataset IDs are empty.
+        """
+        if not self.dataset_array:
             raise UserException("Dataset configuration is missing. Please specify datasets.")
 
-        invalid_dataset = False
-        for dataset in self.dataset_array:
-            if dataset["dataset_input"] == '':
-                invalid_dataset = True
-        if invalid_dataset:
+        if any(dataset["dataset_input"] == '' for dataset in self.dataset_array):
             raise UserException("Dataset IDs cannot be empty. Please enter Dataset ID.")
 
 
