@@ -131,7 +131,8 @@ class Component(ComponentBase):
                 else:
                     msg = json.loads(response.text)
                     logging.error(
-                        f"Failed to refresh dataset: error code: {msg['error']['code']} message: {msg['error']['message']}")
+                        f"Failed to refresh dataset: error code: {msg['error']['code']} "
+                        f"message: {msg['error']['message']}")
                     return False
             except Exception as e:
                 logging.error(f"Dataset refresh failed. Exception: {e}")
