@@ -12,7 +12,7 @@ from typing import Union
 import requests
 from kbc.result import KBCTableDef  # noqa
 from kbc.result import ResultWriter  # noqa
-from keboola.component.base import ComponentBase
+from keboola.component.base import ComponentBase, sync_action
 from keboola.component.exceptions import UserException
 
 # configuration variables
@@ -56,16 +56,18 @@ class Component(ComponentBase):
         group_url = f"groups/{self.workspace}" if self.workspace else ""
 
         for dataset in self.dataset_array:
-            dataset_name = dataset["dataset_input"]
-            logging.info(f"Refreshing dataset {dataset_name}")
-            response = self.refresh_dataset(group_url, dataset_name)
+            dataset_id = dataset["dataset_input"]
+            logging.info(f"Refreshing dataset {dataset_id}")
+            response = self.refresh_dataset(group_url, dataset_id)
             if response:
-                self.success_list.append(dataset_name)
-                self.requestid_array.append([dataset_name, response.headers["RequestId"]])
+                self.success_list.append(dataset_id)
+                self.requestid_array.append([dataset_id, response.headers["RequestId"]])
+                print(f"Request id is: {response.headers['RequestId']}, dataset id is: {dataset_id}")
             else:
-                self.failed_list.append(dataset_name)
+                self.failed_list.append(dataset_id)
 
         if self.wait:
+            time.sleep(5)
             self.check_status(group_url)
         else:
             logging.info(f"List refreshed: {self.success_list}")
@@ -74,6 +76,21 @@ class Component(ComponentBase):
             raise UserException(f"Any of dataset refreshes finished with error. {self.failed_list}")
 
         logging.info("PowerBI Refresh finished")
+
+    @sync_action("selectDataset")
+    def select_dataset(self):
+        self.authorization = self.configuration.config_data["authorization"]
+        self.oauth_token = self.get_oauth_token()
+        return self.get_datasets()
+
+    def get_datasets(self):
+        refresh_url = "https://api.powerbi.com/v1.0/myorg/datasets"
+        header = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.oauth_token}"
+        }
+        response = requests.get(refresh_url, headers=header)
+        return {dataset["name"]: dataset["id"] for dataset in response.json().get("value")}
 
     def get_oauth_token(self):
         """
@@ -117,7 +134,7 @@ class Component(ComponentBase):
             "Content-Type": "application/json",
             "Authorization": "Bearer {}".format(self.oauth_token)
         }
-        payload = {"notifyOption": "MailOnFailure"}
+        payload = {"notifyOption": "MailOnFailure", "type": "Automatic"}
         response = False
 
         for attempts in range(3):
@@ -140,9 +157,10 @@ class Component(ComponentBase):
 
         return response
 
-    def refresh_status(self, group_url, dataset):
-        refresh_url = "https://api.powerbi.com/v1.0/myorg/{0}datasets/{1}/refreshes".format(
-            group_url, dataset)
+    def refresh_status(self, request_id, group_url):
+        refresh_url = f"https://api.powerbi.com/v1.0/myorg/{group_url}datasets/{request_id[0]}/refreshes" \
+                      f"/{request_id[1]}"
+        print(refresh_url)
         header = {
             "Content-Type": "application/json",
             "Authorization": "Bearer {}".format(self.oauth_token)
@@ -156,7 +174,7 @@ class Component(ComponentBase):
             running_list = []
             success_list = []
             for requestid in self.requestid_array:
-                request = self.refresh_status(group_url, requestid[0])
+                request = self.refresh_status(requestid, group_url)
                 if request.status_code == 200:
 
                     selected_status = [f['status'] for f in request.json()['value']
@@ -183,7 +201,7 @@ class Component(ComponentBase):
                 elif request.status_code == 403:
                     self.oauth_token = self.get_oauth_token()
                 else:
-                    raise UserException("Error Message: {status.text}")
+                    raise UserException(f"Error Message: {request.text}")
                 logging.info(f"Running: {running_list}")
                 logging.info(f"Refreshed: {success_list}")
                 logging.info(f"Failed to refresh: {self.failed_list}")
