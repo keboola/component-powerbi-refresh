@@ -90,20 +90,20 @@
       },
       "select_dataset":{
          "type":"array",
+         "description": "Dataset names",
          "format":"select",
          "items":{
-            "enum":[
-
-            ],
+            "enum":[],
             "type":"string"
          },
          "options":{
             "async":{
-               "label":"Re-load test columns",
+               "label":"Re-load Dataset names",
                "action":"selectDataset"
             }
          },
-         "propertyOrder":600
+         "uniqueItems": true,
+         "propertyOrder":250
       }
    }
 }

@@ -48,8 +48,9 @@ class Component(ComponentBase):
         self.failed_list = []
         self.requestid_array = []
 
-    def run(self):
         self.authorization = self.configuration.config_data["authorization"]
+
+    def run(self):
         self.oauth_token = self.get_oauth_token()
 
         self.check_dataset_inputs()
@@ -77,7 +78,6 @@ class Component(ComponentBase):
 
     @sync_action("selectDataset")
     def select_dataset(self):
-        self.authorization = self.configuration.config_data["authorization"]
         self.oauth_token = self.get_oauth_token()
         return self.get_datasets()
 
@@ -89,7 +89,7 @@ class Component(ComponentBase):
             "Authorization": f"Bearer {self.oauth_token}"
         }
         response = requests.get(refresh_url, headers=header)
-        return {dataset["name"]: dataset["id"] for dataset in response.json().get("value")}
+        return [{"label": val["name"], "value": val["id"]} for val in response.json().get("value")]
 
     def get_oauth_token(self):
         """
