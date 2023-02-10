@@ -89,7 +89,7 @@
       },
       "selected_datasets":{
          "type":"array",
-         "description": "Dataset names",
+         "description": "Dataset selector - IN TESTING",
          "format":"select",
          "items":{
             "enum":[],
