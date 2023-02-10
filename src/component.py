@@ -224,7 +224,6 @@ class Component(ComponentBase):
             raise UserException("Dataset configuration is missing. Please specify datasets.")
 
 
-
 """
         Main entrypoint
 """
