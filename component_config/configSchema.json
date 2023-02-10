@@ -90,7 +90,7 @@
       "selected_datasets":{
          "type":"array",
          "title": "Dataset selector [Experimental]",
-         "description": "Use this field to fetch available datasets accessible with your credentials. Overwrites choices in the selector below.",
+         "description": "Use this field to fetch available datasets accessible with your credentials. Gets overwritten by the selector below.",
          "format":"select",
          "items":{
             "enum":[],
