@@ -216,7 +216,7 @@ class Component(ComponentBase):
             UserException: If the dataset configuration is missing or if any of the dataset IDs are empty.
         """
         parameters = self.configuration.parameters
-        if not parameters.get("datasets"):
+        if len(parameters.get("datasets")[0].get("dataset_input")) == 0:
             self.dataset_array = [{"dataset_input": item} for item in parameters.get(KEY_ASYNC_DATASET)]
         else:
             self.dataset_array = parameters.get("datasets")
