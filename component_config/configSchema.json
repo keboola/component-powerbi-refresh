@@ -2,8 +2,7 @@
    "type":"object",
    "title":"PowerBI Refresh Configuration",
    "required":[
-      "workspace",
-      "datasets"
+      "workspace"
    ],
    "properties":{
       "workspace":{
@@ -88,7 +87,7 @@
             }
          }
       },
-      "select_dataset":{
+      "selected_datasets":{
          "type":"array",
          "description": "Dataset names",
          "format":"select",

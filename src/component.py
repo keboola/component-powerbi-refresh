@@ -18,9 +18,9 @@ from keboola.component.exceptions import UserException
 # configuration variables
 KEY_DATASET = 'datasets'
 KEY_WORKSPACE = 'workspace'
+KEY_ASYNC_DATASET = 'selected_datasets'
 
 REQUIRED_PARAMETERS = [
-    KEY_DATASET,
     KEY_WORKSPACE
 ]
 
@@ -31,6 +31,7 @@ DEFAULT_TABLE_SOURCE = "/data/in/tables/"
 class Component(ComponentBase):
     def __init__(self):
         super().__init__()
+        self.dataset_array = None
         self.authorization = None
         self.oauth_token = None
         self.validate_configuration_parameters(REQUIRED_PARAMETERS)
@@ -38,7 +39,6 @@ class Component(ComponentBase):
         parameters = self.configuration.parameters
 
         self.workspace = parameters.get("workspace")
-        self.dataset_array = parameters.get("datasets")
         self.wait = parameters.get("wait", "No") == "Yes"
         self.timeout = time.time() + parameters.get("timeout", 7200)
         self.interval = parameters.get("interval")
@@ -51,6 +51,16 @@ class Component(ComponentBase):
         self.authorization = self.configuration.config_data["authorization"]
 
     def run(self):
+        parameters = self.configuration.parameters
+
+        if not parameters.get("datasets"):
+            self.dataset_array = [{"dataset_input": item} for item in parameters.get(KEY_ASYNC_DATASET)]
+        else:
+            self.dataset_array = parameters.get("datasets")
+
+        if not self.dataset_array:
+            raise UserException("No Dataset were selected.")
+
         self.oauth_token = self.get_oauth_token()
 
         self.check_dataset_inputs()
