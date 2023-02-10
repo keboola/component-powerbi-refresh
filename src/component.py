@@ -56,6 +56,7 @@ class Component(ComponentBase):
         self.check_dataset_inputs()
         group_url = f"groups/{self.workspace}" if self.workspace else ""
 
+        logging.info(f"Processing datasets: {self.dataset_array}")
         for dataset in self.dataset_array:
             dataset_id = dataset["dataset_input"]
             logging.info(f"Refreshing dataset {dataset_id}")
