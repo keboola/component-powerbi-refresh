@@ -51,16 +51,6 @@ class Component(ComponentBase):
         self.authorization = self.configuration.config_data["authorization"]
 
     def run(self):
-        parameters = self.configuration.parameters
-
-        if not parameters.get("datasets"):
-            self.dataset_array = [{"dataset_input": item} for item in parameters.get(KEY_ASYNC_DATASET)]
-        else:
-            self.dataset_array = parameters.get("datasets")
-
-        if not self.dataset_array:
-            raise UserException("No Dataset were selected.")
-
         self.oauth_token = self.get_oauth_token()
 
         self.check_dataset_inputs()
@@ -224,11 +214,15 @@ class Component(ComponentBase):
         Raises:
             UserException: If the dataset configuration is missing or if any of the dataset IDs are empty.
         """
+        parameters = self.configuration.parameters
+        if not parameters.get("datasets"):
+            self.dataset_array = [{"dataset_input": item} for item in parameters.get(KEY_ASYNC_DATASET)]
+        else:
+            self.dataset_array = parameters.get("datasets")
+
         if not self.dataset_array:
             raise UserException("Dataset configuration is missing. Please specify datasets.")
 
-        if any(dataset["dataset_input"] == '' for dataset in self.dataset_array):
-            raise UserException("Dataset IDs cannot be empty. Please enter Dataset ID.")
 
 
 """
