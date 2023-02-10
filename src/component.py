@@ -62,12 +62,10 @@ class Component(ComponentBase):
             if response:
                 self.success_list.append(dataset_id)
                 self.requestid_array.append([dataset_id, response.headers["RequestId"]])
-                print(f"Request id is: {response.headers['RequestId']}, dataset id is: {dataset_id}")
             else:
                 self.failed_list.append(dataset_id)
 
         if self.wait:
-            time.sleep(5)
             self.check_status(group_url)
         else:
             logging.info(f"List refreshed: {self.success_list}")
@@ -84,7 +82,8 @@ class Component(ComponentBase):
         return self.get_datasets()
 
     def get_datasets(self):
-        refresh_url = "https://api.powerbi.com/v1.0/myorg/datasets"
+        group_url = f"groups/{self.workspace}" if self.workspace else ""
+        refresh_url = f"https://api.powerbi.com/v1.0/myorg/{group_url}/datasets"
         header = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.oauth_token}"
@@ -129,12 +128,14 @@ class Component(ComponentBase):
         return response.json()["access_token"]
 
     def refresh_dataset(self, group_url, dataset) -> Union[requests.models.Response, bool]:
-        refresh_url = f"https://api.powerbi.com/v1.0/myorg/{group_url}datasets/{dataset}/refreshes"
+        refresh_url = f"https://api.powerbi.com/v1.0/myorg/{group_url}/datasets/{dataset}/refreshes"
         header = {
             "Content-Type": "application/json",
             "Authorization": "Bearer {}".format(self.oauth_token)
         }
-        payload = {"notifyOption": "MailOnFailure"}
+        payload = {
+            "retryCount": 0
+        }
         response = False
 
         for attempts in range(3):
@@ -154,13 +155,11 @@ class Component(ComponentBase):
             except Exception as e:
                 logging.error(f"Dataset refresh failed. Exception: {e}")
                 return False
-
         return response
 
     def refresh_status(self, request_id, group_url):
         refresh_url = f"https://api.powerbi.com/v1.0/myorg/{group_url}datasets/{request_id[0]}/refreshes" \
                       f"/{request_id[1]}"
-        print(refresh_url)
         header = {
             "Content-Type": "application/json",
             "Authorization": "Bearer {}".format(self.oauth_token)
