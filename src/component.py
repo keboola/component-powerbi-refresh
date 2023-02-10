@@ -134,7 +134,7 @@ class Component(ComponentBase):
             "Content-Type": "application/json",
             "Authorization": "Bearer {}".format(self.oauth_token)
         }
-        payload = {"notifyOption": "MailOnFailure", "type": "Automatic"}
+        payload = {"notifyOption": "MailOnFailure"}
         response = False
 
         for attempts in range(3):
