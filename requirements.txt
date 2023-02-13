@@ -3,3 +3,4 @@ keboola.component==1.4.0
 mock
 freezegun
 requests
+backoff
