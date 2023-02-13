@@ -18,14 +18,11 @@ from keboola.component.exceptions import UserException
 # configuration variables
 KEY_DATASET = 'datasets'
 KEY_WORKSPACE = 'workspace'
-KEY_ASYNC_DATASET = 'selected_datasets'
 
 REQUIRED_PARAMETERS = [
+    KEY_DATASET,
     KEY_WORKSPACE
 ]
-
-# Default Table Output Destination
-DEFAULT_TABLE_SOURCE = "/data/in/tables/"
 
 
 class Component(ComponentBase):
@@ -158,8 +155,18 @@ class Component(ComponentBase):
                 return False
         return response
 
-    def refresh_status(self, request_id, group_url):
-        refresh_url = f"https://api.powerbi.com/v1.0/myorg/{group_url}/datasets/{request_id[0]}/refreshes"
+    def refresh_status(self, dataset_id, group_url):
+        """
+        Uses https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/get-refresh-history
+        to get refresh history. Not available for Onedrive and probably Sharepoint data sources (returns 404).
+        Args:
+            dataset_id: str, id of the dataset
+            group_url: str, workspace id
+
+        Returns:
+            response
+        """
+        refresh_url = f"https://api.powerbi.com/v1.0/myorg/{group_url}/datasets/{dataset_id}/refreshes"
         header = {
             "Content-Type": "application/json",
             "Authorization": "Bearer {}".format(self.oauth_token)
@@ -173,7 +180,7 @@ class Component(ComponentBase):
             running_list = []
             success_list = []
             for requestid in self.requestid_array:
-                request = self.refresh_status(requestid, group_url)
+                request = self.refresh_status(requestid[0], group_url)
                 if request.status_code == 200:
 
                     selected_status = [f['status'] for f in request.json()['value']
@@ -223,14 +230,12 @@ class Component(ComponentBase):
         Raises:
             UserException: If the dataset configuration is missing or if any of the dataset IDs are empty.
         """
-        parameters = self.configuration.parameters
-        if len(parameters.get("datasets")[0].get("dataset_input")) == 0:
-            self.dataset_array = [{"dataset_input": item} for item in parameters.get(KEY_ASYNC_DATASET)]
-        else:
-            self.dataset_array = parameters.get("datasets")
-
         if not self.dataset_array:
             raise UserException("Dataset configuration is missing. Please specify datasets.")
+
+        for dataset in self.dataset_array:
+            if not dataset["dataset_input"]:
+                raise UserException("Dataset IDs cannot be empty. Please enter Dataset ID.")
 
 
 """
