@@ -2,7 +2,8 @@
    "type":"object",
    "title":"PowerBI Refresh Configuration",
    "required":[
-      "workspace"
+      "workspace",
+      "datasets"
    ],
    "properties":{
       "workspace":{
@@ -16,9 +17,15 @@
          "type":"array",
          "title":"PowerBI Datasets",
          "propertyOrder":300,
-         "format":"table",
-         "description":"Please enter the 'ID' of the dataset. *** Note: Not the 'Name' of the dataset ***",
+         "format":"select",
+         "description":"Use this field to fetch available datasets accessible with your credentials.",
          "uniqueItems":true,
+         "options":{
+            "async":{
+               "label":"Re-load Dataset names",
+               "action":"selectDataset"
+            }
+         },
          "items":{
             "title":"dataset",
             "required":[
@@ -85,24 +92,6 @@
                "wait":"Yes"
             }
          }
-      },
-      "selected_datasets":{
-         "type":"array",
-         "title": "Dataset selector [Experimental]",
-         "description": "Use this field to fetch available datasets accessible with your credentials. Gets overwritten by the selector below.",
-         "format":"select",
-         "items":{
-            "enum":[],
-            "type":"string"
-         },
-         "options":{
-            "async":{
-               "label":"Re-load Dataset names",
-               "action":"selectDataset"
-            }
-         },
-         "uniqueItems": true,
-         "propertyOrder":250
       }
    }
 }

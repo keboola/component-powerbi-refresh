@@ -46,11 +46,12 @@ class Component(ComponentBase):
         self.requestid_array = []
 
         self.authorization = self.configuration.config_data["authorization"]
-
-    def run(self):
         self.oauth_token = self.get_oauth_token()
 
+    def run(self):
+        self.load_datasets()
         self.check_dataset_inputs()
+
         group_url = f"groups/{self.workspace}" if self.workspace else ""
 
         logging.info(f"Processing datasets: {self.dataset_array}")
@@ -75,10 +76,6 @@ class Component(ComponentBase):
         logging.info("PowerBI Refresh finished")
 
     @sync_action("selectDataset")
-    def select_dataset(self):
-        self.oauth_token = self.get_oauth_token()
-        return self.get_datasets()
-
     def get_datasets(self):
         group_url = f"groups/{self.workspace}" if self.workspace else ""
         refresh_url = f"https://api.powerbi.com/v1.0/myorg/{group_url}/datasets"
@@ -88,6 +85,18 @@ class Component(ComponentBase):
         }
         response = requests.get(refresh_url, headers=header)
         return [{"label": val["name"], "value": val["id"]} for val in response.json().get("value")]
+
+    def load_datasets(self):
+        """
+        This exists for compatibility with the old configuration scheme.
+        Returns:
+            None
+        """
+        datasets = self.configuration.parameters.get("datasets")
+        if isinstance(datasets, list):
+            self.dataset_array = [{"dataset_input": item} for item in datasets]
+        elif isinstance(datasets, dict):
+            self.dataset_array = datasets
 
     def get_oauth_token(self):
         """
@@ -207,8 +216,8 @@ class Component(ComponentBase):
                             raise UserException(f"Unknown error in dataset {requestid[0]}")
                     else:
                         # This happens for OneDrive data source refreshes and Sharepoint probably too
-                        logging.error(f"Refresh request successful but the component cannot obtain refresh status "
-                                      f"for dataset refresh with id {requestid[1]}")
+                        logging.error(f"Refresh request has been successful but the component cannot obtain refresh "
+                                      f"status for dataset refresh with id {requestid[1]}")
                         self.requestid_array.remove([requestid[0], requestid[1]])
 
                 elif request.status_code == 403:
