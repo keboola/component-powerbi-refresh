@@ -199,7 +199,7 @@ class Component(ComponentBase):
                         else:
                             raise UserException(f"Unknown error in dataset {requestid[0]}")
                     else:
-                        # TODO: Why is this happening?
+                        # This happens for OneDrive data source refreshes and Sharepoint probably too
                         logging.error(f"Refresh request successful but the component cannot obtain refresh status "
                                       f"for dataset refresh with id {requestid[1]}")
                         self.requestid_array.remove([requestid[0], requestid[1]])
