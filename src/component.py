@@ -134,15 +134,15 @@ class Component(ComponentBase):
             "Content-Type": "application/json",
             "Authorization": "Bearer {}".format(self.oauth_token)
         }
-        payload = {
-            "retryCount": 0
-        }
+        # https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/refresh-dataset-in-group#limitations
+        payload = {"notifyOption": "MailOnFailure"}
         response = False
 
         for attempts in range(3):
             try:
                 response = requests.post(refresh_url, headers=header, data=payload)
                 if response.status_code == 202:
+                    logging.info(f"Dataset {dataset} refresh accepted by PowerBI API.")
                     return response
                 if attempts < 2:
                     time.sleep(2 ** (attempts + 4))
@@ -159,8 +159,7 @@ class Component(ComponentBase):
         return response
 
     def refresh_status(self, request_id, group_url):
-        refresh_url = f"https://api.powerbi.com/v1.0/myorg/{group_url}datasets/{request_id[0]}/refreshes" \
-                      f"/{request_id[1]}"
+        refresh_url = f"https://api.powerbi.com/v1.0/myorg/{group_url}/datasets/{request_id[0]}/refreshes"
         header = {
             "Content-Type": "application/json",
             "Authorization": "Bearer {}".format(self.oauth_token)
@@ -180,28 +179,37 @@ class Component(ComponentBase):
                     selected_status = [f['status'] for f in request.json()['value']
                                        if requestid[1] in f['requestId']]
 
-                    if selected_status[0] == "Completed":
-                        success_list.append(requestid[0])
-                        self.requestid_array.remove([requestid[0], requestid[1]])
-                    elif selected_status[0] == "Failed":
-                        self.failed_list.append(requestid[0])
-                        self.requestid_array.remove([requestid[0], requestid[1]])
-                        if not self.alldatasets:
-                            content = json.loads(request.content)
-                            raise UserException(f"Dataset {self.failed_list} finished"
-                                                f" with error {content['value'][1]['serviceExceptionJson']}")
+                    if selected_status:
+                        if selected_status[0] == "Completed":
+                            success_list.append(requestid[0])
+                            self.requestid_array.remove([requestid[0], requestid[1]])
+                        elif selected_status[0] == "Failed":
+                            self.failed_list.append(requestid[0])
+                            self.requestid_array.remove([requestid[0], requestid[1]])
+                            if not self.alldatasets:
+                                content = json.loads(request.content)
+                                raise UserException(f"Dataset {self.failed_list} finished"
+                                                    f" with error {content['value'][1]['serviceExceptionJson']}")
 
-                    elif selected_status[0] == "Disabled":
-                        logging.info(f"Dataset {requestid[0]} is disabled")
-                        self.requestid_array.remove([requestid[0], requestid[1]])
-                    elif selected_status[0] == "Unknown":
-                        running_list.append(requestid[0])
+                        elif selected_status[0] == "Disabled":
+                            logging.info(f"Dataset {requestid[0]} is disabled")
+                            self.requestid_array.remove([requestid[0], requestid[1]])
+                        elif selected_status[0] == "Unknown":
+                            running_list.append(requestid[0])
+                        else:
+                            raise UserException(f"Unknown error in dataset {requestid[0]}")
                     else:
-                        raise UserException(f"Unknown error in dataset {requestid[0]}")
+                        # TODO: Why is this happening?
+                        logging.error(f"Refresh request successful but the component cannot obtain refresh status "
+                                      f"for dataset refresh with id {requestid[1]}")
+                        self.requestid_array.remove([requestid[0], requestid[1]])
+
                 elif request.status_code == 403:
                     self.oauth_token = self.get_oauth_token()
                 else:
-                    raise UserException(f"Error Message: {request.text}")
+                    raise UserException(f"Failed to refresh dataset with ID: {requestid[0]} "
+                                        f"with status code: {request.status_code} and message: "
+                                        f"{request.text}")
                 logging.info(f"Running: {running_list}")
                 logging.info(f"Refreshed: {success_list}")
                 logging.info(f"Failed to refresh: {self.failed_list}")
