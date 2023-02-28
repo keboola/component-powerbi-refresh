@@ -88,12 +88,6 @@ class Component(ComponentBase):
         response = requests.get(refresh_url, headers=self.header)
         return [{"label": val["name"], "value": val["id"]} for val in response.json().get("value")]
 
-    @sync_action("selectWorkspace")
-    def get_workspace(self):
-        url = "https://api.powerbi.com/v1.0/myorg/groups"
-        response = requests.get(url, headers=self.header)
-        logging.info(response.json())
-
     def load_datasets(self):
         """
         This exists for compatibility with the old configuration scheme.
@@ -129,11 +123,11 @@ class Component(ComponentBase):
 
         @backoff.on_exception(backoff.expo, Exception, max_tries=3)
         def send_request():
-            response = requests.post(url, headers=header, data=payload)
-            if response.status_code != 200:
-                raise UserException(
-                    "Unable to refresh access token. {} {}".format(response.status_code, response.reason))
-            return response.json()["access_token"]
+            r = requests.post(url, headers=header, data=payload)
+            if r.status_code != 200:
+                raise UserException(f"Unable to refresh access token. Status code: {r.status_code}"
+                                    f"Reason: {r.reason}, message: {r.json()}")
+            return r.json()["access_token"]
 
         return send_request()
 
