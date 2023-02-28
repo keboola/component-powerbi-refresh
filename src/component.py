@@ -49,6 +49,11 @@ class Component(ComponentBase):
         self.authorization = self.configuration.config_data["authorization"]
         self.oauth_token = self.get_oauth_token()
 
+        self.header = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.oauth_token}"
+        }
+
     def run(self):
         self.load_datasets()
         self.check_dataset_inputs()
@@ -80,12 +85,14 @@ class Component(ComponentBase):
     def get_datasets(self):
         group_url = f"groups/{self.workspace}" if self.workspace else ""
         refresh_url = f"https://api.powerbi.com/v1.0/myorg/{group_url}/datasets"
-        header = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.oauth_token}"
-        }
-        response = requests.get(refresh_url, headers=header)
+        response = requests.get(refresh_url, headers=self.header)
         return [{"label": val["name"], "value": val["id"]} for val in response.json().get("value")]
+
+    @sync_action("selectWorkspace")
+    def get_workspace(self):
+        url = "https://api.powerbi.com/v1.0/myorg/groups"
+        response = requests.get(url, headers=self.header)
+        logging.info(response.json())
 
     def load_datasets(self):
         """
@@ -132,16 +139,12 @@ class Component(ComponentBase):
 
     def refresh_dataset(self, group_url, dataset) -> Union[requests.models.Response, bool]:
         refresh_url = f"https://api.powerbi.com/v1.0/myorg/{group_url}/datasets/{dataset}/refreshes"
-        header = {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer {}".format(self.oauth_token)
-        }
         # https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/refresh-dataset-in-group#limitations
         payload = {"notifyOption": "MailOnFailure"}
 
         @backoff.on_exception(backoff.expo, Exception, max_time=120)
         def refresh_dataset_backoff():
-            r = requests.post(refresh_url, headers=header, data=payload)
+            r = requests.post(refresh_url, headers=self.header, data=payload)
             if r.status_code == 202:
                 logging.info(f"Dataset {dataset} refresh accepted by PowerBI API.")
                 return r
@@ -170,12 +173,8 @@ class Component(ComponentBase):
             response
         """
         refresh_url = f"https://api.powerbi.com/v1.0/myorg/{group_url}/datasets/{dataset_id}/refreshes"
-        header = {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer {}".format(self.oauth_token)
-        }
         response = requests.get(
-            url=refresh_url, headers=header)
+            url=refresh_url, headers=self.header)
         return response
 
     def process_status(self, request, request_list, success_list, running_list):
