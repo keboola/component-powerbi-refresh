@@ -136,7 +136,7 @@ class Component(ComponentBase):
         # https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/refresh-dataset-in-group#limitations
         payload = {"notifyOption": "MailOnFailure"}
 
-        @backoff.on_exception(backoff.expo, Exception, max_time=120)
+        @backoff.on_exception(backoff.expo, Exception, max_tries=3)
         def refresh_dataset_backoff():
             r = requests.post(refresh_url, headers=self.header, data=payload)
             if r.status_code == 202:
@@ -173,13 +173,9 @@ class Component(ComponentBase):
 
     def process_status(self, request, request_list, success_list, running_list):
         if request.status_code != 200:
-            if request.status_code == 403:
-                self.oauth_token = self.get_oauth_token()
-            else:
-                raise UserException(f"Failed to refresh dataset with ID: {request_list[0]} "
-                                    f"with status code: {request.status_code} and message: "
-                                    f"{request.text}")
-            return
+            raise UserException(f"Failed to refresh dataset with ID: {request_list[0]} "
+                                f"with status code: {request.status_code} and message: "
+                                f"{request.text}")
 
         selected_status = [f['status'] for f in request.json()['value'] if request_list[1] in f['requestId']]
 
