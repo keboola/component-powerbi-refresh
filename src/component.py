@@ -142,6 +142,7 @@ class Component(ComponentBase):
             if r.status_code == 202:
                 logging.info(f"Dataset {dataset} refresh accepted by PowerBI API.")
                 return r
+            logging.info(r.text)
             msg = json.loads(r.text)
             logging.error(
                 f"Failed to refresh dataset: error code: {msg['error']['code']} "
