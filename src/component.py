@@ -143,10 +143,13 @@ class Component(ComponentBase):
                 logging.info(f"Dataset {dataset} refresh accepted by PowerBI API.")
                 return r
             logging.info(r.text)
-            msg = json.loads(r.text)
-            logging.error(
-                f"Failed to refresh dataset: error code: {msg['error']['code']} "
-                f"message: {msg['error']['message']}")
+            try:
+                msg = json.loads(r.text)
+                logging.error(
+                    f"Failed to refresh dataset: error code: {msg['error']['code']} "
+                    f"message: {msg['error']['message']}")
+            except json.JSONDecodeError:
+                logging.error(f"Error : {r} Error txt : {r.text}")
             return False
 
         try:
