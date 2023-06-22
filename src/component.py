@@ -149,7 +149,8 @@ class Component(ComponentBase):
                     f"Failed to refresh dataset: error code: {msg['error']['code']} "
                     f"message: {msg['error']['message']}")
             except json.JSONDecodeError:
-                logging.error(f"Error : {r} Error reason : {r.reason}, {r.text}, {r.status_code}")
+                logging.error(
+                    f"Failed to decode error. Raw Error : {r} Error reason : {r.reason}, {r.text}, {r.status_code}")
             return False
 
         try:
