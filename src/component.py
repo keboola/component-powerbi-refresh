@@ -11,6 +11,8 @@ from typing import Union
 import requests
 import backoff
 
+from json import JSONDecodeError
+
 from kbc.result import KBCTableDef  # noqa
 from kbc.result import ResultWriter  # noqa
 from keboola.component.base import ComponentBase, sync_action
@@ -142,11 +144,16 @@ class Component(ComponentBase):
             if r.status_code == 202:
                 logging.info(f"Dataset {dataset} refresh accepted by PowerBI API.")
                 return r
-            msg = json.loads(r.text)
-            logging.error(
-                f"Failed to refresh dataset: error code: {msg['error']['code']} "
-                f"message: {msg['error']['message']}")
-            return False
+            try:
+                msg = json.loads(r.text)
+                logging.error(
+                    f"Failed to refresh dataset: error code: {msg['error']['code']} "
+                    f"message: {msg['error']['message']}")
+                return False
+            except JSONDecodeError:
+                logging.error(r)
+                logging.error(r.text)
+                return False
 
         try:
             response = refresh_dataset_backoff()
