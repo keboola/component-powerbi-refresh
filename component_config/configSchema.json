@@ -8,8 +8,22 @@
    "properties":{
       "workspace":{
          "type":"string",
+         "format": "select",
          "title":"PowerBI Workspace",
-         "description":"Please leave this blank if user is trying to export into the signed-in account's workspace",
+         "description":"Please leave this blank if you want to refresh a dataset that is not assigned to a workspace.",
+         "options": {
+           "async": {
+             "label": "Load Workspaces",
+             "action": "selectWorkspace"
+           }
+         },
+         "items": {
+           "enum": [
+           ],
+           "type": "string"
+         },
+         "enum": [
+         ],
          "propertyOrder":200,
          "default":""
       },

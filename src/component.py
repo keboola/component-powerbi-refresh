@@ -81,6 +81,12 @@ class Component(ComponentBase):
 
         logging.info("PowerBI Refresh finished")
 
+    @sync_action("selectWorkspace")
+    def get_workspaces(self):
+        refresh_url = f"https://api.powerbi.com/v1.0/myorg/groups"
+        response = requests.get(refresh_url, headers=self.header)
+        return [{"label": val["name"], "value": val["id"]} for val in response.json().get("value")]
+
     @sync_action("selectDataset")
     def get_datasets(self):
         group_url = f"groups/{self.workspace}" if self.workspace else ""
