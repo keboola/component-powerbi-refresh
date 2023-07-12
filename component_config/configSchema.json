@@ -27,7 +27,7 @@
          "propertyOrder":200,
          "default":""
       },
-      "datasets":{
+      "datasets_action":{
          "type":"array",
          "title":"PowerBI Datasets",
          "propertyOrder":300,
@@ -40,19 +40,10 @@
                "action":"selectDataset"
             }
          },
-         "items":{
-            "title":"dataset",
-            "required":[
-               "dataset_input"
-            ],
-            "properties":{
-               "dataset_input":{
-                  "title":"Dataset ID",
-                  "type":"string"
-               }
-            }
-         },
-         "minItems":1
+         "items": {
+           "enum": [],
+           "type": "string"
+         }
       },
       "wait":{
          "enum":[

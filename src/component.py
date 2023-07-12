@@ -96,11 +96,20 @@ class Component(ComponentBase):
 
     def load_datasets(self):
         """
-        This exists for compatibility with the old configuration scheme.
+        This exists for compatibility with the old configuration scheme that was refactored in KCOFAC-2294-refactor-ux.
         Returns:
             None
         """
-        datasets = self.configuration.parameters.get("datasets")
+        datasets_action = self.configuration.parameters.get("datasets_action")
+        datasets = self.configuration.parameters.get("datasets") # old field
+
+        if not datasets_action:
+            if not datasets:
+                raise UserException(
+                    "To refresh Power BI datasets, you must specify datasets in Configuration Parameters.")
+        else:
+            datasets = datasets_action
+
         if isinstance(datasets[0], str):
             self.dataset_array = [{"dataset_input": item} for item in datasets]
         elif isinstance(datasets[0], dict):
