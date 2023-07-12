@@ -122,8 +122,7 @@ class Component(ComponentBase):
         config = self.authorization
 
         if not config.get("oauth_api"):
-            raise UserException("Component must be authenticated. In order for the component to process PowerBI "
-                                "refresh, please authenticate.")
+            raise UserException("In order for the component to process PowerBI refresh, please authenticate.")
 
         credentials = config["oauth_api"]["credentials"]
         client_id = credentials["appKey"]
