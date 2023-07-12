@@ -101,7 +101,7 @@ class Component(ComponentBase):
             None
         """
         datasets_action = self.configuration.parameters.get("datasets_action")
-        datasets = self.configuration.parameters.get("datasets") # old field
+        datasets = self.configuration.parameters.get("datasets")  # old field
 
         if not datasets_action:
             if not datasets:
