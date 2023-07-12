@@ -83,7 +83,7 @@ class Component(ComponentBase):
 
     @sync_action("selectWorkspace")
     def get_workspaces(self):
-        refresh_url = f"https://api.powerbi.com/v1.0/myorg/groups"
+        refresh_url = "https://api.powerbi.com/v1.0/myorg/groups"
         response = requests.get(refresh_url, headers=self.header)
         return [{"label": val["name"], "value": val["id"]} for val in response.json().get("value")]
 
