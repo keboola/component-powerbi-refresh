@@ -7,7 +7,7 @@
          "type":"string",
          "format": "select",
          "title":"PowerBI Workspace",
-         "description":"Please leave this blank if you want to refresh a dataset that is not assigned to a workspace.",
+         "description":"Please leave this blank or set to Default Workspace if you want to refresh a dataset that is not assigned to a workspace.",
          "options": {
            "async": {
              "label": "Load Workspaces",
