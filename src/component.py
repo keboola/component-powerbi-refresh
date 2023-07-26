@@ -17,13 +17,10 @@ from keboola.component.base import ComponentBase, sync_action
 from keboola.component.exceptions import UserException
 
 # configuration variables
-KEY_DATASET = 'datasets'
+KEY_DATASET = 'dataset_list'
 KEY_WORKSPACE = 'workspace'
 
-REQUIRED_PARAMETERS = [
-    KEY_DATASET,
-    KEY_WORKSPACE
-]
+REQUIRED_PARAMETERS = []
 
 
 class Component(ComponentBase):
@@ -85,7 +82,13 @@ class Component(ComponentBase):
     def get_workspaces(self):
         refresh_url = "https://api.powerbi.com/v1.0/myorg/groups"
         response = requests.get(refresh_url, headers=self.header)
-        return [{"label": val["name"], "value": val["id"]} for val in response.json().get("value")]
+        workspaces = [{"label": val["name"], "value": val["id"]} for val in response.json().get("value")]
+
+        # Adding the Default Workspace element
+        default_workspace = {"label": "Default Workspace", "value": ""}
+        workspaces.insert(0, default_workspace)
+
+        return workspaces
 
     @sync_action("selectDataset")
     def get_datasets(self):
@@ -100,15 +103,15 @@ class Component(ComponentBase):
         Returns:
             None
         """
-        datasets_action = self.configuration.parameters.get("datasets_action")
+        dataset_list = self.configuration.parameters.get("dataset_list")
         datasets = self.configuration.parameters.get("datasets")  # old field
 
-        if not datasets_action:
+        if not dataset_list:
             if not datasets:
                 raise UserException(
                     "To refresh Power BI datasets, you must specify datasets in Configuration Parameters.")
         else:
-            datasets = datasets_action
+            datasets = dataset_list
 
         if isinstance(datasets[0], str):
             self.dataset_array = [{"dataset_input": item} for item in datasets]

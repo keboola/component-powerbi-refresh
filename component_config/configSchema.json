@@ -1,10 +1,7 @@
 {
    "type":"object",
    "title":"PowerBI Refresh Configuration",
-   "required":[
-      "workspace",
-      "datasets"
-   ],
+   "required":[],
    "properties":{
       "workspace":{
          "type":"string",
@@ -27,7 +24,7 @@
          "propertyOrder":200,
          "default":""
       },
-      "datasets_action":{
+      "dataset_list":{
          "type":"array",
          "title":"PowerBI Datasets",
          "propertyOrder":300,
