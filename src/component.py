@@ -17,13 +17,10 @@ from keboola.component.base import ComponentBase, sync_action
 from keboola.component.exceptions import UserException
 
 # configuration variables
-KEY_DATASET = 'datasets'
+KEY_DATASET = 'dataset_list'
 KEY_WORKSPACE = 'workspace'
 
-REQUIRED_PARAMETERS = [
-    KEY_DATASET,
-    KEY_WORKSPACE
-]
+REQUIRED_PARAMETERS = []
 
 
 class Component(ComponentBase):
@@ -81,6 +78,18 @@ class Component(ComponentBase):
 
         logging.info("PowerBI Refresh finished")
 
+    @sync_action("selectWorkspace")
+    def get_workspaces(self):
+        refresh_url = "https://api.powerbi.com/v1.0/myorg/groups"
+        response = requests.get(refresh_url, headers=self.header)
+        workspaces = [{"label": val["name"], "value": val["id"]} for val in response.json().get("value")]
+
+        # Adding the Default Workspace element
+        default_workspace = {"label": "Default Workspace", "value": ""}
+        workspaces.insert(0, default_workspace)
+
+        return workspaces
+
     @sync_action("selectDataset")
     def get_datasets(self):
         group_url = f"groups/{self.workspace}" if self.workspace else ""
@@ -90,11 +99,20 @@ class Component(ComponentBase):
 
     def load_datasets(self):
         """
-        This exists for compatibility with the old configuration scheme.
+        This exists for compatibility with the old configuration scheme that was refactored in KCOFAC-2294-refactor-ux.
         Returns:
             None
         """
-        datasets = self.configuration.parameters.get("datasets")
+        dataset_list = self.configuration.parameters.get("dataset_list")
+        datasets = self.configuration.parameters.get("datasets")  # old field
+
+        if not dataset_list:
+            if not datasets:
+                raise UserException(
+                    "To refresh Power BI datasets, you must specify datasets in Configuration Parameters.")
+        else:
+            datasets = dataset_list
+
         if isinstance(datasets[0], str):
             self.dataset_array = [{"dataset_input": item} for item in datasets]
         elif isinstance(datasets[0], dict):
@@ -105,6 +123,10 @@ class Component(ComponentBase):
         Extracting OAuth Token from Authorization
         """
         config = self.authorization
+
+        if not config.get("oauth_api"):
+            raise UserException("In order for the component to process PowerBI refresh, please authenticate.")
+
         credentials = config["oauth_api"]["credentials"]
         client_id = credentials["appKey"]
         client_secret = credentials["#appSecret"]
