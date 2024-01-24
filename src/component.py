@@ -20,6 +20,7 @@ from keboola.component.exceptions import UserException
 KEY_DATASET = 'dataset_list'
 KEY_WORKSPACE = 'workspace'
 
+STATE_REFRESH_TOKEN = "#refresh_token"
 REQUIRED_PARAMETERS = []
 
 
@@ -29,6 +30,7 @@ class Component(ComponentBase):
         self.dataset_array = None
         self.authorization = None
         self.oauth_token = None
+        self.refresh_token = None
         self.validate_configuration_parameters(REQUIRED_PARAMETERS)
 
         parameters = self.configuration.parameters
@@ -44,7 +46,8 @@ class Component(ComponentBase):
         self.requestid_array = []
 
         self.authorization = self.configuration.config_data["authorization"]
-        self.oauth_token = self.get_oauth_token()
+        self.oauth_token, self.refresh_token = self.get_oauth_token()
+        self.write_state_file({STATE_REFRESH_TOKEN: self.refresh_token})
 
         self.header = {
             "Content-Type": "application/json",
@@ -131,7 +134,12 @@ class Component(ComponentBase):
         client_id = credentials["appKey"]
         client_secret = credentials["#appSecret"]
         encrypted_data = json.loads(credentials["#data"])
-        refresh_token = encrypted_data["refresh_token"]
+        refresh_token = self.get_state_file().get(STATE_REFRESH_TOKEN, [])
+
+        if not refresh_token:
+            refresh_token = encrypted_data["refresh_token"]
+        else:
+            logging.info("Refresh token loaded from state file")
 
         url = "https://login.microsoftonline.com/common/oauth2/token"
         header = {"Content-Type": "application/x-www-form-urlencoded"}
@@ -149,7 +157,7 @@ class Component(ComponentBase):
             if r.status_code != 200:
                 raise UserException(f"Unable to refresh access token. Status code: {r.status_code}"
                                     f"Reason: {r.reason}, message: {r.json()}")
-            return r.json()["access_token"]
+            return r.json()["access_token"], r.json()["refresh_token"]
 
         return send_request()
 
