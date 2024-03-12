@@ -157,6 +157,7 @@ class Component(ComponentBase):
             if r.status_code != 200:
                 raise UserException(f"Unable to refresh access token. Status code: {r.status_code}"
                                     f"Reason: {r.reason}, message: {r.json()}")
+            logging.info(f"Access token expires in {r.json()['expires_in']} seconds. Refresh token expires in {r.json()['refresh_token_expires_in']} seconds.")
             return r.json()["access_token"], r.json()["refresh_token"]
 
         return send_request()
