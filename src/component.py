@@ -138,7 +138,9 @@ class Component(ComponentBase):
         refresh_token = self.get_state_file().get(STATE_REFRESH_TOKEN, [])
         auth_id = self.get_state_file().get(STATE_AUTH_ID, [])
 
-        if not refresh_token or auth_id != config["id"]:
+        if not auth_id:  # TODO: remove after migration
+            logging.info("Refresh token loaded from state file")
+        elif not refresh_token or auth_id != config["id"]:
             refresh_token = encrypted_data["refresh_token"]
         else:
             logging.info("Refresh token loaded from state file")
