@@ -48,7 +48,10 @@ class Component(ComponentBase):
 
         self.authorization = self.configuration.config_data["authorization"]
         self.oauth_token, self.refresh_token = self.get_oauth_token()
-        self.write_state_file({STATE_REFRESH_TOKEN: self.refresh_token, STATE_AUTH_ID: self.authorization["id"]})
+        self.write_state_file({
+                    STATE_REFRESH_TOKEN: self.refresh_token,
+                    STATE_AUTH_ID: self.authorization.get("oauth_api", {}).get("credentials", {}).get("id", "")
+                    })
 
         self.header = {
             "Content-Type": "application/json",
@@ -138,13 +141,16 @@ class Component(ComponentBase):
         refresh_token = self.get_state_file().get(STATE_REFRESH_TOKEN, [])
         auth_id = self.get_state_file().get(STATE_AUTH_ID, [])
 
-        if not auth_id:  # TODO: remove after few weeks
+        if not auth_id and refresh_token:  # TODO: remove after few weeks
             # prevents discarding saved refresh tokens due to the missing conf id in the state file
             logging.info("Refresh token loaded from state file")
-        elif not refresh_token or auth_id != config["id"]:
-            refresh_token = encrypted_data["refresh_token"]
-        else:
+
+        elif refresh_token and auth_id == credentials.get("id", ""):
             logging.info("Refresh token loaded from state file")
+
+        else:
+            refresh_token = encrypted_data["refresh_token"]
+            logging.info("Refresh token loaded from authorization")
 
         url = "https://login.microsoftonline.com/common/oauth2/token"
         header = {"Content-Type": "application/x-www-form-urlencoded"}
