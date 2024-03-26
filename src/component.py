@@ -254,7 +254,12 @@ class Component(ComponentBase):
             running_list = []
             success_list = []
             for requestid in self.requestid_array:
-                request = self.refresh_status(requestid[0], group_url)
+
+                try:
+                    request = self.refresh_status(requestid[0], group_url)
+                except RequestException as e:
+                    raise UserException(f"Status check failed with exception: {e}")
+
                 self.process_status(request, requestid, success_list, running_list)
                 logging.info(f"Running: {running_list}")
                 logging.info(f"Refreshed: {success_list}")
