@@ -258,7 +258,7 @@ class Component(ComponentBase):
                 try:
                     request = self.refresh_status(requestid[0], group_url)
                 except RequestException as e:
-                    raise UserException(f"Status check failed with exception: {e}")
+                    raise UserException(f"Refresh status check failed with exception: {e}")
 
                 self.process_status(request, requestid, success_list, running_list)
                 logging.info(f"Running: {running_list}")
