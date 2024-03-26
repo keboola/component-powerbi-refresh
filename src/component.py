@@ -15,6 +15,7 @@ from kbc.result import KBCTableDef  # noqa
 from kbc.result import ResultWriter  # noqa
 from keboola.component.base import ComponentBase, sync_action
 from keboola.component.exceptions import UserException
+from requests import RequestException
 
 # configuration variables
 KEY_DATASET = 'dataset_list'
@@ -198,6 +199,7 @@ class Component(ComponentBase):
             logging.error(f"Dataset refresh failed. Exception: {e}")
             return False
 
+    @backoff.on_exception(backoff.expo, RequestException, max_tries=3)
     def refresh_status(self, dataset_id, group_url):
         """
         Uses https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/get-refresh-history
@@ -210,8 +212,7 @@ class Component(ComponentBase):
             response
         """
         refresh_url = f"https://api.powerbi.com/v1.0/myorg/{group_url}/datasets/{dataset_id}/refreshes"
-        response = requests.get(
-            url=refresh_url, headers=self.header)
+        response = requests.get(url=refresh_url, headers=self.header)
         return response
 
     def process_status(self, request, request_list, success_list, running_list):
