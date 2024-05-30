@@ -86,25 +86,6 @@ class Component(ComponentBase):
 
         logging.info("PowerBI Refresh finished")
 
-    @sync_action("selectWorkspace")
-    def get_workspaces(self):
-        refresh_url = "https://api.powerbi.com/v1.0/myorg/groups"
-        response = requests.get(refresh_url, headers=self.header)
-        workspaces = [{"label": val["name"], "value": val["id"]} for val in response.json().get("value")]
-
-        # Adding the Default Workspace element
-        default_workspace = {"label": "Default Workspace", "value": ""}
-        workspaces.insert(0, default_workspace)
-
-        return workspaces
-
-    @sync_action("selectDataset")
-    def get_datasets(self):
-        group_url = f"groups/{self.workspace}" if self.workspace else ""
-        refresh_url = f"https://api.powerbi.com/v1.0/myorg/{group_url}/datasets"
-        response = requests.get(refresh_url, headers=self.header)
-        return [{"label": val["name"], "value": val["id"]} for val in response.json().get("value")]
-
     def load_datasets(self):
         """
         This exists for compatibility with the old configuration scheme that was refactored in KCOFAC-2294-refactor-ux.
@@ -167,7 +148,7 @@ class Component(ComponentBase):
         def send_request():
             r = requests.post(url, headers=header, data=payload)
             if r.status_code != 200:
-                raise UserException(f"Unable to refresh access token. Status code: {r.status_code}"
+                raise UserException(f"Unable to refresh access token. Status code: {r.status_code} "
                                     f"Reason: {r.reason}, message: {r.json()}")
             logging.info(f"Access token expires in {r.json().get('expires_in', '')} seconds."
                          f"Refresh token expires in {r.json().get('refresh_token_expires_in','')} seconds.")
@@ -280,6 +261,37 @@ class Component(ComponentBase):
         for dataset in self.dataset_array:
             if not dataset["dataset_input"]:
                 raise UserException("Dataset IDs cannot be empty. Please enter Dataset ID.")
+
+    @sync_action("selectWorkspace")
+    def get_workspaces(self):
+        refresh_url = "https://api.powerbi.com/v1.0/myorg/groups"
+        response = requests.get(refresh_url, headers=self.header)
+
+        try:
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            raise UserException(f"Error while fetching workspaces: {e}")
+
+        workspaces = [{"label": val["name"], "value": val["id"]} for val in response.json().get("value")]
+
+        # Adding the Default Workspace element
+        default_workspace = {"label": "Default Workspace", "value": ""}
+        workspaces.insert(0, default_workspace)
+
+        return workspaces
+
+    @sync_action("selectDataset")
+    def get_datasets(self):
+        group_url = f"groups/{self.workspace}" if self.workspace else ""
+        refresh_url = f"https://api.powerbi.com/v1.0/myorg/{group_url}/datasets"
+        response = requests.get(refresh_url, headers=self.header)
+
+        try:
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            raise UserException(f"Error while fetching datasets: {e}")
+
+        return [{"label": val["name"], "value": val["id"]} for val in response.json().get("value")]
 
 
 """
