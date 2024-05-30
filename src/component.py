@@ -289,10 +289,7 @@ class Component(ComponentBase):
         try:
             response.raise_for_status()
         except requests.exceptions.HTTPError as e:
-            if response.status_code == 404:
-                raise UserException("No datasets found in the selected workspace.")
-            else:
-                raise UserException(f"Error while fetching datasets: {e}")
+            raise UserException(f"Error while fetching datasets: {e}")
 
         return [{"label": val["name"], "value": val["id"]} for val in response.json().get("value")]
 
