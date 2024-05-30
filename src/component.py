@@ -266,6 +266,12 @@ class Component(ComponentBase):
     def get_workspaces(self):
         refresh_url = "https://api.powerbi.com/v1.0/myorg/groups"
         response = requests.get(refresh_url, headers=self.header)
+
+        try:
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            raise UserException(f"Error while fetching workspaces: {e}")
+
         workspaces = [{"label": val["name"], "value": val["id"]} for val in response.json().get("value")]
 
         # Adding the Default Workspace element
