@@ -29,6 +29,11 @@ REQUIRED_PARAMETERS = []
 class Component(ComponentBase):
     def __init__(self):
         super().__init__()
+
+        if self.configuration.action == "selectWorkspace" or self.configuration.action == "selectDataset":
+            logging.getLogger().setLevel(logging.ERROR)
+            logging.basicConfig(level=logging.ERROR)
+
         self.dataset_array = None
         self.authorization = None
         self.oauth_token = None
