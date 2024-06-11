@@ -30,10 +30,6 @@ class Component(ComponentBase):
     def __init__(self):
         super().__init__()
 
-        if self.configuration.action == "selectWorkspace" or self.configuration.action == "selectDataset":
-            logging.getLogger().setLevel(logging.ERROR)
-            logging.basicConfig(level=logging.ERROR)
-
         self.dataset_array = None
         self.authorization = None
         self.oauth_token = None
@@ -52,6 +48,7 @@ class Component(ComponentBase):
         self.failed_list = []
         self.requestid_array = []
 
+    def _client_init(self):
         self.authorization = self.configuration.config_data["authorization"]
         self.oauth_token, self.refresh_token = self.get_oauth_token()
         self.write_state_file({
@@ -65,6 +62,7 @@ class Component(ComponentBase):
         }
 
     def run(self):
+        self._client_init()
         self.load_datasets()
         self.check_dataset_inputs()
 
@@ -269,6 +267,7 @@ class Component(ComponentBase):
 
     @sync_action("selectWorkspace")
     def get_workspaces(self):
+        self._client_init()
         refresh_url = "https://api.powerbi.com/v1.0/myorg/groups"
         response = requests.get(refresh_url, headers=self.header)
 
@@ -287,6 +286,7 @@ class Component(ComponentBase):
 
     @sync_action("selectDataset")
     def get_datasets(self):
+        self._client_init()
         group_url = f"groups/{self.workspace}" if self.workspace else ""
         refresh_url = f"https://api.powerbi.com/v1.0/myorg/{group_url}/datasets"
         response = requests.get(refresh_url, headers=self.header)
