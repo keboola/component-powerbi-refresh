@@ -20,4 +20,4 @@ Be aware! Each 'PowerBI Refresh' application's configuration can only work with 
 	- Status check interval (Works only when "Wait for end" is Yes)
 	
 6. Timeout
-	- Status check timeout (Works only when "Wait for end" is Yes)
+	- Status check timeout (Works only when "Wait for end" is Yes) - maximum is 2 hours!
