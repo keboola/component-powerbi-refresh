@@ -211,9 +211,15 @@ class Component(ComponentBase):
         response = requests.get(url=url, headers=self.header)
 
         if response.status_code == 403:
-            access_token, _ = self.get_oauth_token()
-            self.header = access_token
-            response = requests.get(url=url, headers=self.header)
+            try:
+                error_message = response.json()
+                if error_message.get('error', {}).get('code') == 'TokenExpired':
+                    access_token, _ = self.get_oauth_token()
+                    self.header = access_token
+                    response = requests.get(url=url, headers=self.header)
+            except ValueError:
+                raise UserException(f"Request for url {url} failed with status code: {response.status_code}"
+                                    f" and message: {response.text}")
 
         return response
 
