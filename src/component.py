@@ -50,16 +50,13 @@ class Component(ComponentBase):
 
     def _client_init(self):
         self.authorization = self.configuration.config_data["authorization"]
-        self.oauth_token, self.refresh_token = self.get_oauth_token()
+        access_token, self.refresh_token = self.get_oauth_token()
         self.write_state_file({
                     STATE_REFRESH_TOKEN: self.refresh_token,
                     STATE_AUTH_ID: self.authorization.get("oauth_api", {}).get("credentials", {}).get("id", "")
                     })
 
-        self.header = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.oauth_token}"
-        }
+        self.header = access_token
 
     def run(self):
         self._client_init()
@@ -89,6 +86,17 @@ class Component(ComponentBase):
 
         logging.info("PowerBI Refresh finished")
 
+    @property
+    def header(self):
+        return self.header
+
+    @header.setter
+    def header(self, access_token):
+        self.header = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {access_token}"
+        }
+
     def load_datasets(self):
         """
         This exists for compatibility with the old configuration scheme that was refactored in KCOFAC-2294-refactor-ux.
@@ -111,9 +119,7 @@ class Component(ComponentBase):
             self.dataset_array = datasets
 
     def get_oauth_token(self):
-        """
-        Extracting OAuth Token from Authorization
-        """
+        """Returns access token and refresh token."""
         config = self.authorization
 
         if not config.get("oauth_api"):
@@ -183,7 +189,6 @@ class Component(ComponentBase):
             logging.error(f"Dataset refresh failed. Exception: {e}")
             return False
 
-    @backoff.on_exception(backoff.expo, RequestException, max_tries=3)
     def refresh_status(self, dataset_id, group_url):
         """
         Uses https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/get-refresh-history
@@ -196,7 +201,20 @@ class Component(ComponentBase):
             response
         """
         refresh_url = f"https://api.powerbi.com/v1.0/myorg/{group_url}/datasets/{dataset_id}/refreshes"
-        response = requests.get(url=refresh_url, headers=self.header)
+
+        response = self._get_request(refresh_url)
+
+        return response
+
+    @backoff.on_exception(backoff.expo, RequestException, max_tries=3)
+    def _get_request(self, url):
+        response = requests.get(url=url, headers=self.header)
+
+        if response.status_code == 403:
+            access_token, _ = self.get_oauth_token()
+            self.header = access_token
+            response = requests.get(url=url, headers=self.header)
+
         return response
 
     def process_status(self, request, request_list, success_list, running_list):
@@ -269,7 +287,7 @@ class Component(ComponentBase):
     def get_workspaces(self):
         self._client_init()
         refresh_url = "https://api.powerbi.com/v1.0/myorg/groups"
-        response = requests.get(refresh_url, headers=self.header)
+        response = self._get_request(refresh_url)
 
         try:
             response.raise_for_status()
@@ -289,7 +307,7 @@ class Component(ComponentBase):
         self._client_init()
         group_url = f"groups/{self.workspace}" if self.workspace else ""
         refresh_url = f"https://api.powerbi.com/v1.0/myorg/{group_url}/datasets"
-        response = requests.get(refresh_url, headers=self.header)
+        response = self._get_request(refresh_url)
 
         try:
             response.raise_for_status()
