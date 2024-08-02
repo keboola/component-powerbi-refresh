@@ -131,22 +131,33 @@ class Component(ComponentBase):
         client_id = credentials["appKey"]
         client_secret = credentials["#appSecret"]
         encrypted_data = json.loads(credentials["#data"])
-        refresh_token = self.get_state_file().get(STATE_REFRESH_TOKEN, [])
-        auth_id = self.get_state_file().get(STATE_AUTH_ID, [])
+        state_file = self.get_state_file()
+        refresh_token = state_file.get(STATE_REFRESH_TOKEN, [])
+        auth_id = state_file.get(STATE_AUTH_ID, [])
 
+        refresh_token = self._get_refresh_token(auth_id, refresh_token, encrypted_data, credentials)
+        response = self._request_new_token(client_id, client_secret, refresh_token)
+
+        return response["access_token"], response["refresh_token"]
+
+    @staticmethod
+    def _get_refresh_token(auth_id, refresh_token, encrypted_data, credentials):
+        """Determines the correct refresh token to use."""
         if not auth_id and refresh_token:  # TODO: remove after few weeks
-            # prevents discarding saved refresh tokens due to the missing conf id in the state file
             logging.info("Refresh token loaded from state file")
-
         elif refresh_token and auth_id == credentials.get("id", ""):
             logging.info("Refresh token loaded from state file")
-
         else:
             refresh_token = encrypted_data["refresh_token"]
             logging.info("Refresh token loaded from authorization")
 
+        return refresh_token
+
+    @staticmethod
+    def _request_new_token(client_id, client_secret, refresh_token):
+        """Requests a new access token using the refresh token."""
         url = "https://login.microsoftonline.com/common/oauth2/token"
-        header = {"Content-Type": "application/x-www-form-urlencoded"}
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
         payload = {
             "client_id": client_id,
             "client_secret": client_secret,
@@ -155,16 +166,21 @@ class Component(ComponentBase):
             "refresh_token": refresh_token
         }
 
-        r = requests.post(url, headers=header, data=payload)
-        if r.status_code != 200:
-            raise UserException(f"Unable to refresh access token. Status code: {r.status_code} "
-                                f"Reason: {r.reason}, message: {r.json()}")
+        response = requests.post(url, headers=headers, data=payload)
+        if response.status_code != 200:
+            raise UserException(
+                f"Unable to refresh access token. Status code: {response.status_code} "
+                f"Reason: {response.reason}, message: {response.json()}"
+            )
 
-        r_json = r.json()
-        logging.info(f"Access token expires in {r_json.get('expires_in', '')} seconds."
-                     f"Refresh token expires in {r_json.get('refresh_token_expires_in', '')} seconds.")
+        response_json = response.json()
+        logging.debug(f"Response from PowerBI API: {response_json}")
+        logging.info(
+            f"Access token expires in {response_json.get('expires_in', '')} seconds."
+            f"Refresh token expires in {response_json.get('refresh_token_expires_in', '')} seconds."
+        )
 
-        return r_json["access_token"], r_json["refresh_token"]
+        return response_json
 
     @backoff.on_exception(backoff.expo, Exception, max_tries=3)
     def refresh_dataset(self, group_url, dataset) -> Union[requests.models.Response, bool]:
@@ -199,10 +215,7 @@ class Component(ComponentBase):
             response
         """
         refresh_url = f"https://api.powerbi.com/v1.0/myorg/{group_url}/datasets/{dataset_id}/refreshes"
-
-        response = self._get_request(refresh_url)
-
-        return response
+        return self._get_request(refresh_url)
 
     @backoff.on_exception(backoff.expo, RequestException, max_tries=3)
     def _get_request(self, url):
