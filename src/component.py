@@ -162,7 +162,6 @@ class Component(ComponentBase):
 
         return r.json()["access_token"], r.json()["refresh_token"]
 
-
     def refresh_dataset(self, group_url, dataset) -> Union[requests.models.Response, bool]:
         refresh_url = f"https://api.powerbi.com/v1.0/myorg/{group_url}/datasets/{dataset}/refreshes"
         # https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/refresh-dataset-in-group#limitations
