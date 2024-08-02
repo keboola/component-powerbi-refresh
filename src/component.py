@@ -153,17 +153,15 @@ class Component(ComponentBase):
             "refresh_token": refresh_token
         }
 
-        @backoff.on_exception(backoff.expo, Exception, max_tries=3)
-        def send_request():
-            r = requests.post(url, headers=header, data=payload)
-            if r.status_code != 200:
-                raise UserException(f"Unable to refresh access token. Status code: {r.status_code} "
-                                    f"Reason: {r.reason}, message: {r.json()}")
-            logging.info(f"Access token expires in {r.json().get('expires_in', '')} seconds."
-                         f"Refresh token expires in {r.json().get('refresh_token_expires_in','')} seconds.")
-            return r.json()["access_token"], r.json()["refresh_token"]
+        r = requests.post(url, headers=header, data=payload)
+        if r.status_code != 200:
+            raise UserException(f"Unable to refresh access token. Status code: {r.status_code} "
+                                f"Reason: {r.reason}, message: {r.json()}")
+        logging.info(f"Access token expires in {r.json().get('expires_in', '')} seconds."
+                     f"Refresh token expires in {r.json().get('refresh_token_expires_in', '')} seconds.")
 
-        return send_request()
+        return r.json()["access_token"], r.json()["refresh_token"]
+
 
     def refresh_dataset(self, group_url, dataset) -> Union[requests.models.Response, bool]:
         refresh_url = f"https://api.powerbi.com/v1.0/myorg/{group_url}/datasets/{dataset}/refreshes"
