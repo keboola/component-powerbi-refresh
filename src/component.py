@@ -162,13 +162,13 @@ class Component(ComponentBase):
 
         return r.json()["access_token"], r.json()["refresh_token"]
 
+    @backoff.on_exception(backoff.expo, Exception, max_tries=3)
     def refresh_dataset(self, group_url, dataset) -> Union[requests.models.Response, bool]:
         refresh_url = f"https://api.powerbi.com/v1.0/myorg/{group_url}/datasets/{dataset}/refreshes"
         # https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/refresh-dataset-in-group#limitations
         payload = {"notifyOption": "MailOnFailure"}
 
-        @backoff.on_exception(backoff.expo, Exception, max_tries=3)
-        def refresh_dataset_backoff():
+        def _refresh_dataset():
             r = requests.post(refresh_url, headers=self.header, data=payload)
             if r.status_code == 202:
                 logging.info(f"Dataset {dataset} refresh accepted by PowerBI API.")
@@ -180,7 +180,7 @@ class Component(ComponentBase):
             return False
 
         try:
-            response = refresh_dataset_backoff()
+            response = _refresh_dataset()
             return response
         except Exception as e:
             logging.error(f"Dataset refresh failed. Exception: {e}")
