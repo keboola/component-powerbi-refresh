@@ -30,6 +30,7 @@ class Component(ComponentBase):
     def __init__(self):
         super().__init__()
 
+        self._header = None
         self.dataset_array = None
         self.authorization = None
         self.oauth_token = None
@@ -89,11 +90,11 @@ class Component(ComponentBase):
 
     @property
     def header(self):
-        return self.header
+        return self._header
 
     @header.setter
     def header(self, access_token):
-        self.header = {
+        self._header = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {access_token}"
         }
@@ -171,7 +172,7 @@ class Component(ComponentBase):
         # https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/refresh-dataset-in-group#limitations
         payload = {"notifyOption": "MailOnFailure"}
 
-        def _refresh_dataset():
+        try:
             r = requests.post(refresh_url, headers=self.header, data=payload)
             if r.status_code == 202:
                 logging.info(f"Dataset {dataset} refresh accepted by PowerBI API.")
@@ -182,9 +183,6 @@ class Component(ComponentBase):
                 f"message: {msg['error']['message']}")
             return False
 
-        try:
-            response = _refresh_dataset()
-            return response
         except Exception as e:
             logging.error(f"Dataset refresh failed. Exception: {e}")
             return False
