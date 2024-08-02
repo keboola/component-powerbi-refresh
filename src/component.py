@@ -77,6 +77,7 @@ class Component(ComponentBase):
                 self.failed_list.append(dataset_id)
 
         if self.wait:
+            logging.debug(f"Waiting for dataset refreshes to finish. Timeout: {self.timeout}")
             self.check_status(group_url)
         else:
             logging.info(f"List refreshed: {self.success_list}")
@@ -157,10 +158,12 @@ class Component(ComponentBase):
         if r.status_code != 200:
             raise UserException(f"Unable to refresh access token. Status code: {r.status_code} "
                                 f"Reason: {r.reason}, message: {r.json()}")
-        logging.info(f"Access token expires in {r.json().get('expires_in', '')} seconds."
-                     f"Refresh token expires in {r.json().get('refresh_token_expires_in', '')} seconds.")
 
-        return r.json()["access_token"], r.json()["refresh_token"]
+        r_json = r.json()
+        logging.info(f"Access token expires in {r_json.get('expires_in', '')} seconds."
+                     f"Refresh token expires in {r_json.get('refresh_token_expires_in', '')} seconds.")
+
+        return r_json["access_token"], r_json["refresh_token"]
 
     @backoff.on_exception(backoff.expo, Exception, max_tries=3)
     def refresh_dataset(self, group_url, dataset) -> Union[requests.models.Response, bool]:
