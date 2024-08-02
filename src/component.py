@@ -173,14 +173,7 @@ class Component(ComponentBase):
                 f"Reason: {response.reason}, message: {response.json()}"
             )
 
-        response_json = response.json()
-        logging.debug(f"Response from PowerBI API: {response_json}")
-        logging.info(
-            f"Access token expires in {response_json.get('expires_in', '')} seconds."
-            f"Refresh token expires in {response_json.get('refresh_token_expires_in', '')} seconds."
-        )
-
-        return response_json
+        return response.json()
 
     @backoff.on_exception(backoff.expo, Exception, max_tries=3)
     def refresh_dataset(self, group_url, dataset) -> Union[requests.models.Response, bool]:
