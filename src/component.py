@@ -30,6 +30,7 @@ class Component(ComponentBase):
     def __init__(self):
         super().__init__()
 
+        self._header = None
         self.dataset_array = None
         self.authorization = None
         self.oauth_token = None
@@ -50,16 +51,13 @@ class Component(ComponentBase):
 
     def _client_init(self):
         self.authorization = self.configuration.config_data["authorization"]
-        self.oauth_token, self.refresh_token = self.get_oauth_token()
+        access_token, self.refresh_token = self.get_oauth_token()
         self.write_state_file({
                     STATE_REFRESH_TOKEN: self.refresh_token,
                     STATE_AUTH_ID: self.authorization.get("oauth_api", {}).get("credentials", {}).get("id", "")
                     })
 
-        self.header = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.oauth_token}"
-        }
+        self.header = access_token
 
     def run(self):
         self._client_init()
@@ -80,6 +78,7 @@ class Component(ComponentBase):
                 self.failed_list.append(dataset_id)
 
         if self.wait:
+            logging.debug(f"Waiting for dataset refreshes to finish. Timeout: {self.timeout}")
             self.check_status(group_url)
         else:
             logging.info(f"List refreshed: {self.success_list}")
@@ -88,6 +87,17 @@ class Component(ComponentBase):
             raise UserException(f"Any of dataset refreshes finished with error. {self.failed_list}")
 
         logging.info("PowerBI Refresh finished")
+
+    @property
+    def header(self):
+        return self._header
+
+    @header.setter
+    def header(self, access_token):
+        self._header = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {access_token}"
+        }
 
     def load_datasets(self):
         """
@@ -111,9 +121,7 @@ class Component(ComponentBase):
             self.dataset_array = datasets
 
     def get_oauth_token(self):
-        """
-        Extracting OAuth Token from Authorization
-        """
+        """Returns access token and refresh token."""
         config = self.authorization
 
         if not config.get("oauth_api"):
@@ -123,22 +131,33 @@ class Component(ComponentBase):
         client_id = credentials["appKey"]
         client_secret = credentials["#appSecret"]
         encrypted_data = json.loads(credentials["#data"])
-        refresh_token = self.get_state_file().get(STATE_REFRESH_TOKEN, [])
-        auth_id = self.get_state_file().get(STATE_AUTH_ID, [])
+        state_file = self.get_state_file()
+        refresh_token = state_file.get(STATE_REFRESH_TOKEN, [])
+        auth_id = state_file.get(STATE_AUTH_ID, [])
 
+        refresh_token = self._get_refresh_token(auth_id, refresh_token, encrypted_data, credentials)
+        response = self._request_new_token(client_id, client_secret, refresh_token)
+
+        return response["access_token"], response["refresh_token"]
+
+    @staticmethod
+    def _get_refresh_token(auth_id, refresh_token, encrypted_data, credentials):
+        """Determines the correct refresh token to use."""
         if not auth_id and refresh_token:  # TODO: remove after few weeks
-            # prevents discarding saved refresh tokens due to the missing conf id in the state file
             logging.info("Refresh token loaded from state file")
-
         elif refresh_token and auth_id == credentials.get("id", ""):
             logging.info("Refresh token loaded from state file")
-
         else:
             refresh_token = encrypted_data["refresh_token"]
             logging.info("Refresh token loaded from authorization")
 
+        return refresh_token
+
+    @staticmethod
+    def _request_new_token(client_id, client_secret, refresh_token):
+        """Requests a new access token using the refresh token."""
         url = "https://login.microsoftonline.com/common/oauth2/token"
-        header = {"Content-Type": "application/x-www-form-urlencoded"}
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
         payload = {
             "client_id": client_id,
             "client_secret": client_secret,
@@ -147,25 +166,22 @@ class Component(ComponentBase):
             "refresh_token": refresh_token
         }
 
-        @backoff.on_exception(backoff.expo, Exception, max_tries=3)
-        def send_request():
-            r = requests.post(url, headers=header, data=payload)
-            if r.status_code != 200:
-                raise UserException(f"Unable to refresh access token. Status code: {r.status_code} "
-                                    f"Reason: {r.reason}, message: {r.json()}")
-            logging.info(f"Access token expires in {r.json().get('expires_in', '')} seconds."
-                         f"Refresh token expires in {r.json().get('refresh_token_expires_in','')} seconds.")
-            return r.json()["access_token"], r.json()["refresh_token"]
+        response = requests.post(url, headers=headers, data=payload)
+        if response.status_code != 200:
+            raise UserException(
+                f"Unable to refresh access token. Status code: {response.status_code} "
+                f"Reason: {response.reason}, message: {response.json()}"
+            )
 
-        return send_request()
+        return response.json()
 
+    @backoff.on_exception(backoff.expo, Exception, max_tries=3)
     def refresh_dataset(self, group_url, dataset) -> Union[requests.models.Response, bool]:
         refresh_url = f"https://api.powerbi.com/v1.0/myorg/{group_url}/datasets/{dataset}/refreshes"
         # https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/refresh-dataset-in-group#limitations
         payload = {"notifyOption": "MailOnFailure"}
 
-        @backoff.on_exception(backoff.expo, Exception, max_tries=3)
-        def refresh_dataset_backoff():
+        try:
             r = requests.post(refresh_url, headers=self.header, data=payload)
             if r.status_code == 202:
                 logging.info(f"Dataset {dataset} refresh accepted by PowerBI API.")
@@ -176,14 +192,10 @@ class Component(ComponentBase):
                 f"message: {msg['error']['message']}")
             return False
 
-        try:
-            response = refresh_dataset_backoff()
-            return response
         except Exception as e:
             logging.error(f"Dataset refresh failed. Exception: {e}")
             return False
 
-    @backoff.on_exception(backoff.expo, RequestException, max_tries=3)
     def refresh_status(self, dataset_id, group_url):
         """
         Uses https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/get-refresh-history
@@ -196,7 +208,23 @@ class Component(ComponentBase):
             response
         """
         refresh_url = f"https://api.powerbi.com/v1.0/myorg/{group_url}/datasets/{dataset_id}/refreshes"
-        response = requests.get(url=refresh_url, headers=self.header)
+        return self._get_request(refresh_url)
+
+    @backoff.on_exception(backoff.expo, RequestException, max_tries=3)
+    def _get_request(self, url):
+        response = requests.get(url=url, headers=self.header)
+
+        if response.status_code == 403:
+            try:
+                error_message = response.json()
+                if error_message.get('error', {}).get('code') == 'TokenExpired':
+                    access_token, _ = self.get_oauth_token()
+                    self.header = access_token
+                    response = requests.get(url=url, headers=self.header)
+            except ValueError:
+                raise UserException(f"Request for url {url} failed with status code: {response.status_code}"
+                                    f" and message: {response.text}")
+
         return response
 
     def process_status(self, request, request_list, success_list, running_list):
@@ -269,7 +297,7 @@ class Component(ComponentBase):
     def get_workspaces(self):
         self._client_init()
         refresh_url = "https://api.powerbi.com/v1.0/myorg/groups"
-        response = requests.get(refresh_url, headers=self.header)
+        response = self._get_request(refresh_url)
 
         try:
             response.raise_for_status()
@@ -289,7 +317,7 @@ class Component(ComponentBase):
         self._client_init()
         group_url = f"groups/{self.workspace}" if self.workspace else ""
         refresh_url = f"https://api.powerbi.com/v1.0/myorg/{group_url}/datasets"
-        response = requests.get(refresh_url, headers=self.header)
+        response = self._get_request(refresh_url)
 
         try:
             response.raise_for_status()

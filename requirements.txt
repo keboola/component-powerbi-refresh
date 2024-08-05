@@ -2,5 +2,5 @@ https://bitbucket.org/kds_consulting_team/keboola-python-util-lib/get/0.2.0.zip#
 keboola.component==1.4.4
 mock
 freezegun
-requests
+requests==2.32.3
 backoff
