@@ -11,6 +11,9 @@ The main purpose of 'PowerBI Refresh' application is to refresh the configured d
 
 Functionality notes
 ===================
+a) The more detailed information about the refresh status can be found in the Datasource/Semantic Model under Refresh > Refresh History > Show
+
+b) The credentials used for the datasource connection in Power BI Desktop are not transferred to Power BI Online when publishing the report. It is necessary to set them again in the Data Source/Semantic Model under File > Settings > Data source credentials.
 
 Prerequisites
 =============
