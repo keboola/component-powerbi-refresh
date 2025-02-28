@@ -61,7 +61,7 @@
          ],
          "type":"string",
          "title":"Wait for all datasets to finish",
-         "description":"End job with error if any dataset finishes with a failed status.",
+         "description":"End job with an error if any dataset finishes with a failed status.",
          "default":"No",
          "required":true,
          "propertyOrder":450,
