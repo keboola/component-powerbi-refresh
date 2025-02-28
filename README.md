@@ -1,45 +1,40 @@
-
+Refreshing PowerBI's datasets
 =============
 
-Refreshing PowerBI's datasets
+The primary purpose of the 'PowerBI Refresh' application is to refresh the configured datasets within a PowerBI workspace. 
 
-The main purpose of 'PowerBI Refresh' application is to refresh the configured datasets within a PowerBI Workspace. Be aware! Each 'PowerBI Refresh' application's configuration can only work with one PowerBI Workspace, meaning that if you want to refresh PowerBI datasets from another PowerBI Workspaces, you will have to create a new 'PowerBI Refresh' configuration to send "refresh" requests to the PowerBI Workspace.
+**Important:** Each **PowerBI Refresh** configuration can only work with a single PowerBI workspace. If you need to refresh datasets in multiple PowerBI workspaces, you must create a separate configuration for each workspace.
 
 **Table of contents:**
 
 [TOC]
 
-Functionality notes
+Functionality Notes
 ===================
-a) The more detailed information about the refresh status can be found in the Datasource/Semantic Model under Refresh > Refresh History > Show
+- Detailed information about the refresh status can be found in the **Datasource/Semantic Model** under **Refresh > Refresh History > Show**.
 
-b) The credentials used for the datasource connection in Power BI Desktop are not transferred to Power BI Online when publishing the report. It is necessary to set them again in the Data Source/Semantic Model under File > Settings > Data source credentials.
+- The credentials used for the datasource connection in Power BI Desktop are not transferred to Power BI Online when publishing the report. You must set them again in the **Data Source/Semantic Model** under **File > Settings > Data source credentials**.
 
 Prerequisites
 =============
 
-- oauth2 Authorization
-- ID of the Dataset
+- OAuth2 authorization
+- Dataset ID
 
-Supported endpoints
+Supported Endpoints
 ===================
 
-If you need more endpoints, please submit your request to
-[ideas.keboola.com](https://ideas.keboola.com/)
+If you need additional endpoints, please submit your request at [ideas.keboola.com](https://ideas.keboola.com/).
 
-Configuration
+PowerBI Refresh Configuration
 =============
 
-### PowerBI Refresh Configuration
- - PowerBI Workspace (workspace) - [REQ] Please leave this blank if user is trying to export into the signed-in account's workspace
- - PowerBI Datasets (datasets) - [REQ] Please enter the 'ID' of the dataset. Note: Not the 'Name' of the dataset
- - Wait for end (wait) - [OPT] Check dataset refresh status after refresh request
- - Wait for all datasets (alldatasets) - [OPT] End job with error if any of datasets finish with failed status (Works only when "Wait for end" is Yes)
- - Interval (interval) - [OPT] Status check interval (Works only when "Wait for end" is Yes)
- - Timeout (timeout) - [OPT] Status check timeout (Works only when "Wait for end" is Yes)
-
-
-
+ - **PowerBI workspace** (`workspace`) - [REQ] Leave this blank if exporting to the signed-in account's workspace.
+ - **PowerBI datasets** (`datasets`) - [REQ] Enter the **ID** of the dataset (not the dataset name).
+ - **Wait for end** (`wait`) - [OPT] Check the dataset's refresh status after sending the refresh request.
+ - **Wait for all datasets** (`alldatasets`) - [OPT] End the job with an error if any dataset fails to refresh (only works when "Wait for end" is set to `Yes`).
+ - **Interval** (`interval`) - [OPT] Status check interval (only works when "Wait for end" is set to `Yes`).
+ - **Timeout** (`timeout`) - [OPT] Status check timeout (only works when "Wait for end" is `Yes`).
 
 Sample Configuration
 =============
@@ -63,12 +58,12 @@ Sample Configuration
 Output
 ======
 
-Log output
+The application generates **log output** for monitoring refresh activities.
 
 Development
 -----------
 
-If required, change local data folder (the `CUSTOM_FOLDER` placeholder) path to your custom path in
+If needed, modify the local data folder path (the `CUSTOM_FOLDER` placeholder) in
 the `docker-compose.yml` file:
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -77,14 +72,14 @@ the `docker-compose.yml` file:
       - ./CUSTOM_FOLDER:/data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Clone this repository, init the workspace and run the component with following command:
+Clone this repository, initialize the workspace, and run the component using the following commands:
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 docker-compose build
 docker-compose run --rm dev
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Run the test suite and lint check using this command:
+To run the test suite and perform a lint check, use:
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 docker-compose run --rm test

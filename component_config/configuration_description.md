@@ -1,23 +1,24 @@
-The main purpose of 'PowerBI Refresh' application is to refresh the configured datasets within a PowerBI Workspace.
-Be aware! Each 'PowerBI Refresh' application's configuration can only work with one PowerBI Workspace, meaning that if you want to refresh PowerBI datasets from another PowerBI Workspaces, you will have to create a new 'PowerBI Refresh' configuration to send "refresh" requests to the PowerBI Workspace.
+The primary purpose of the Power BI Refresh application is to refresh the configured datasets within a Power BI workspace.
+
+**Important:** Each Power BI Refresh configuration can only work with a single Power BI workspace. If you need to refresh datasets in multiple Power BI workspaces, you must create a separate configuration for each workspace.
 
 ## Parameters
 
-1. PowerBI Workspace
-    - The PowerBI Workspace where the user wants to refresh their dataset
-    - Please leave this blank if the user is exporting the dataset into the signed in account's "My Workspace"
+1. **PowerBI workspace**
+    - The PowerBI workspace where the user wants to refresh their dataset.
+    - Leave this blank if exporting the dataset to the signed-in account's **"My Workspace"**.
 
-2. PowerBI Datasets
-    - IDs of the PowerBI Datasets within the configured workspace the user wish to refresh
+2. **PowerBI datasets**
+    - The IDs of the PowerBI datasets within the configured workspace that the user wants to refresh.
 	
-3. Wait for end
-	- Check dataset refresh status after refresh request
+3. **Wait for end**
+	- Check the dataset refresh status after sending the refresh request.
 	
-4. Wait for all datasets
-	- End job with error if any of datasets finish with failed status (Works only when "Wait for end" is Yes)
+4. **Wait for all datasets**
+	- End the job with an error if any dataset finishes with a failed status (only works when "Wait for end" is set to `Yes`).
 	
-5. Interval
-	- Status check interval (Works only when "Wait for end" is Yes)
+5. **Interval**
+	- The interval (in seconds) for checking refresh statuses (only works when "Wait for end" is set to `Yes`).
 	
-6. Timeout
-	- Status check timeout (Works only when "Wait for end" is Yes) - maximum is 2 hours!
+6. **Timeout**
+	- The timeout duration (in seconds) for checking refresh statuses. Maximum allowed timeout: 2 hours.
