@@ -6,11 +6,11 @@
       "workspace":{
          "type":"string",
          "format": "select",
-         "title":"PowerBI Workspace",
-         "description":"Please leave this blank or set to Default Workspace if you want to refresh a dataset that is not assigned to a workspace.",
+         "title":"PowerBI workspace",
+         "description":"Please leave this blank or set it to Default Workspace if you want to refresh a dataset that is not assigned to a workspace.",
          "options": {
            "async": {
-             "label": "Load Workspaces",
+             "label": "Load workspaces",
              "action": "selectWorkspace"
            }
          },
@@ -26,14 +26,14 @@
       },
       "dataset_list":{
          "type":"array",
-         "title":"PowerBI Datasets",
+         "title":"PowerBI datasets",
          "propertyOrder":300,
          "format":"select",
          "description":"Use this field to fetch available datasets accessible with your credentials.",
          "uniqueItems":true,
          "options":{
             "async":{
-               "label":"Re-load Dataset names",
+               "label":"Reload dataset names",
                "action":"selectDataset"
             }
          },
@@ -48,8 +48,8 @@
             "No"
          ],
          "type":"string",
-         "title":"Wait for refresh jobs to finish.",
-         "description":"Poll dataset refresh status and wait until it's finished. If set to No, the component execution ends as soon as the refresh jobs are triggered.",
+         "title":"Wait for refresh jobs to finish",
+         "description":"Poll the dataset refresh status and wait until it is finished. If set to No, the component execution ends as soon as the refresh jobs are triggered.",
          "required":true,
          "default":"No",
          "propertyOrder":400
@@ -61,7 +61,7 @@
          ],
          "type":"string",
          "title":"Wait for all datasets to finish",
-         "description":"End job with error if any of datasets finish with failed status.",
+         "description":"End job with error if any dataset finishes with a failed status.",
          "default":"No",
          "required":true,
          "propertyOrder":450,
@@ -73,9 +73,9 @@
       },
       "interval":{
          "type":"integer",
-         "title":"Refresh job status polling interval (s)",
+         "title":"Refresh job status polling interval(s)",
          "default":30,
-         "description":"Check for status after specified amount of seconds.",
+         "description":"Check the refresh status at the specified interval (in seconds).",
          "propertyOrder":500,
          "options":{
             "dependencies":{
@@ -87,7 +87,7 @@
          "type":"integer",
          "title":"Refresh job status polling timeout",
          "default":3600,
-         "description":"Poll statuses of triggered jobs for specified amount of seconds. The component ends after the timeout value. Maximum is 2 hours!",
+         "description":"Poll the statuses of triggered jobs for the specified number of seconds. The component ends after reaching the timeout value. The maximum timeout is 2 hours.",
          "propertyOrder":550,
          "options":{
             "dependencies":{
