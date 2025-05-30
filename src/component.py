@@ -11,8 +11,8 @@ from typing import Union
 import requests
 import backoff
 
-from kbc.result import KBCTableDef  # noqa
-from kbc.result import ResultWriter  # noqa
+#from kbc.result import KBCTableDef  # noqa
+#from kbc.result import ResultWriter  # noqa
 from keboola.component.base import ComponentBase, sync_action
 from keboola.component.exceptions import UserException
 from requests import RequestException
