@@ -269,6 +269,7 @@ class Component(ComponentBase):
 
                 try:
                     request = self.refresh_status(requestid[0], group_url)
+                    logging.debug(f"Status check for dataset {requestid[0]}: {request}")
                 except RequestException as e:
                     raise UserException(f"Refresh status check failed with exception: {e}")
 
