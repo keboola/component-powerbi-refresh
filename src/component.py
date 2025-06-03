@@ -78,6 +78,7 @@ class Component(ComponentBase):
                 self.failed_list.append(dataset_id)
 
         if self.wait:
+            time.sleep(10)  # wait for the initial requests to be processed
             logging.debug(f"Waiting for dataset refreshes to finish. Timeout: {self.timeout}")
             self.check_status(group_url)
         else:
