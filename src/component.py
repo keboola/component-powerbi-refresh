@@ -233,6 +233,8 @@ class Component(ComponentBase):
                                 f"with status code: {request.status_code} and message: "
                                 f"{request.text}")
 
+        logging.debug(f"Response for dataset {request_list[0]}: {request.json()}")
+
         selected_status = [f['status'] for f in request.json()['value'] if request_list[1] in f['requestId']]
 
         if not selected_status:
