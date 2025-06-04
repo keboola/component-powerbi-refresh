@@ -22,6 +22,7 @@ KEY_WORKSPACE = 'workspace'
 STATE_AUTH_ID = "auth_id"
 STATE_REFRESH_TOKEN = "#refresh_token"
 REQUIRED_PARAMETERS = []
+WAIT_BEFORE_STATUS_CHECK = 10  # seconds
 
 
 class Component(ComponentBase):
@@ -76,7 +77,7 @@ class Component(ComponentBase):
                 self.failed_list.append(dataset_id)
 
         if self.wait:
-            time.sleep(10)  # wait for the initial requests to be processed
+            time.sleep(WAIT_BEFORE_STATUS_CHECK)  # wait for the initial requests to be processed
             logging.debug(f"Waiting for dataset refreshes to finish. Timeout: {self.timeout}")
             self.check_status(group_url)
         else:
