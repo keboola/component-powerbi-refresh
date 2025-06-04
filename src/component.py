@@ -11,8 +11,6 @@ from typing import Union
 import requests
 import backoff
 
-#from kbc.result import KBCTableDef  # noqa
-#from kbc.result import ResultWriter  # noqa
 from keboola.component.base import ComponentBase, sync_action
 from keboola.component.exceptions import UserException
 from requests import RequestException
@@ -234,8 +232,6 @@ class Component(ComponentBase):
                                 f"with status code: {request.status_code} and message: "
                                 f"{request.text}")
 
-        logging.debug(f"Response for dataset {request_list[0]}: {request.json()}")
-
         selected_status = [f['status'] for f in request.json()['value'] if request_list[1] in f['requestId']]
 
         if not selected_status:
@@ -272,7 +268,6 @@ class Component(ComponentBase):
 
                 try:
                     request = self.refresh_status(requestid[0], group_url)
-                    logging.debug(f"Status check for dataset {requestid[0]}: {request}")
                 except RequestException as e:
                     raise UserException(f"Refresh status check failed with exception: {e}")
 
