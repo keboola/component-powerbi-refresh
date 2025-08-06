@@ -87,7 +87,7 @@
          "type":"integer",
          "title":"Refresh job status polling timeout",
          "default":3600,
-         "description":"Poll the statuses of triggered jobs for the specified number of seconds. The component ends after reaching the timeout value. The maximum timeout is 2 hours.",
+         "description":"Poll the statuses of triggered jobs for the specified number of seconds. The component stops after reaching the timeout value. The maximum timeout is also defined in the settings in the top-right menu.",
          "propertyOrder":550,
          "options":{
             "dependencies":{
