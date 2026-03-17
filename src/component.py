@@ -23,6 +23,17 @@ STATE_AUTH_ID = "auth_id"
 STATE_REFRESH_TOKEN = "#refresh_token"
 REQUIRED_PARAMETERS = []
 WAIT_BEFORE_STATUS_CHECK = 10  # seconds
+RATE_LIMIT_MAX_RETRIES = 10
+RATE_LIMIT_DEFAULT_WAIT = 60  # seconds
+
+
+class TooManyRequestsError(Exception):
+    """Raised when the API returns HTTP 429 Too Many Requests."""
+    def __init__(self, retry_after: int | None = None):
+        self.retry_after = retry_after
+        super().__init__(
+            f"Rate limited by PowerBI API (HTTP 429). Retry-After: {retry_after}s"
+        )
 
 
 class Component(ComponentBase):
@@ -175,7 +186,29 @@ class Component(ComponentBase):
 
         return response.json()
 
-    @backoff.on_exception(backoff.expo, Exception, max_tries=3)
+    @staticmethod
+    def _get_retry_after(response: requests.models.Response, default: int = RATE_LIMIT_DEFAULT_WAIT) -> int:
+        """Extract wait time in seconds from Retry-After header."""
+        retry_after = response.headers.get("Retry-After")
+        if retry_after:
+            try:
+                return int(retry_after)
+            except (ValueError, TypeError):
+                pass
+        return default
+
+    def _check_rate_limit(self, response: requests.models.Response) -> None:
+        """Check for HTTP 429 rate limit and raise TooManyRequestsError if detected."""
+        if response.status_code == 429:
+            retry_after = self._get_retry_after(response)
+            logging.warning(
+                f"Rate limited by PowerBI API (HTTP 429). "
+                f"Waiting {retry_after} seconds before retrying..."
+            )
+            time.sleep(retry_after)
+            raise TooManyRequestsError(retry_after=retry_after)
+
+    @backoff.on_exception(backoff.expo, TooManyRequestsError, max_tries=RATE_LIMIT_MAX_RETRIES)
     def refresh_dataset(self, group_url, dataset) -> Union[requests.models.Response, bool]:
         refresh_url = f"https://api.powerbi.com/v1.0/myorg/{group_url}/datasets/{dataset}/refreshes"
         # https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/refresh-dataset-in-group#limitations
@@ -186,12 +219,15 @@ class Component(ComponentBase):
             if r.status_code == 202:
                 logging.info(f"Dataset {dataset} refresh accepted by PowerBI API.")
                 return r
+            self._check_rate_limit(r)
             msg = json.loads(r.text)
             logging.error(
                 f"Failed to refresh dataset: error code: {msg['error']['code']} "
                 f"message: {msg['error']['message']}")
             return False
 
+        except TooManyRequestsError:
+            raise
         except Exception as e:
             logging.error(f"Dataset refresh failed. Exception: {e}")
             return False
@@ -210,9 +246,11 @@ class Component(ComponentBase):
         refresh_url = f"https://api.powerbi.com/v1.0/myorg/{group_url}/datasets/{dataset_id}/refreshes"
         return self._get_request(refresh_url)
 
-    @backoff.on_exception(backoff.expo, RequestException, max_tries=3)
-    def _get_request(self, url):
+    @backoff.on_exception(backoff.expo, (RequestException, TooManyRequestsError), max_tries=RATE_LIMIT_MAX_RETRIES)
+    def _get_request(self, url: str) -> requests.models.Response:
         response = requests.get(url=url, headers=self.header)
+
+        self._check_rate_limit(response)
 
         if response.status_code == 403:
             try:
@@ -221,6 +259,7 @@ class Component(ComponentBase):
                     access_token, _ = self.get_oauth_token()
                     self.header = access_token
                     response = requests.get(url=url, headers=self.header)
+                    self._check_rate_limit(response)
             except ValueError:
                 raise UserException(f"Request for url {url} failed with status code: {response.status_code}"
                                     f" and message: {response.text}")
@@ -269,7 +308,7 @@ class Component(ComponentBase):
 
                 try:
                     request = self.refresh_status(requestid[0], group_url)
-                except RequestException as e:
+                except (RequestException, TooManyRequestsError) as e:
                     raise UserException(f"Refresh status check failed with exception: {e}")
 
                 self.process_status(request, requestid, success_list, running_list)
