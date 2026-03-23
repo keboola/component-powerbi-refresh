@@ -27,7 +27,7 @@ RATE_LIMIT_MAX_RETRIES = 10
 RATE_LIMIT_DEFAULT_WAIT = 60  # seconds
 
 
-class TooManyRequestsError(UserException):
+class TooManyRequestsError(Exception):
     """Raised when the API returns HTTP 429 Too Many Requests."""
     def __init__(self, retry_after: int | None = None):
         self.retry_after = retry_after
