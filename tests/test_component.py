@@ -1,23 +1,24 @@
-'''
+"""
 Created on 12. 11. 2018
 
 @author: esner
-'''
-import unittest
-import mock
+"""
+
 import os
-from unittest.mock import patch, MagicMock
+import unittest
+from unittest import mock
+from unittest.mock import MagicMock, patch
+
 from freezegun import freeze_time
 
-from component import Component, TooManyRequestsError, RATE_LIMIT_DEFAULT_WAIT
+from component import RATE_LIMIT_DEFAULT_WAIT, Component, TooManyRequestsError
 
 
 class TestComponent(unittest.TestCase):
-
     # set global time to 2010-10-10 - affects functions like datetime.now()
     @freeze_time("2010-10-10")
     # set KBC_DATADIR env to non-existing dir
-    @mock.patch.dict(os.environ, {'KBC_DATADIR': './non-existing-dir'})
+    @mock.patch.dict(os.environ, {"KBC_DATADIR": "./non-existing-dir"})
     def test_run_no_cfg_fails(self):
         with self.assertRaises(ValueError):
             comp = Component()
@@ -25,7 +26,6 @@ class TestComponent(unittest.TestCase):
 
 
 class TestTooManyRequestsError(unittest.TestCase):
-
     def test_message_includes_retry_after(self):
         err = TooManyRequestsError(retry_after=23)
         self.assertEqual(err.retry_after, 23)
@@ -38,7 +38,6 @@ class TestTooManyRequestsError(unittest.TestCase):
 
 
 class TestGetRetryAfter(unittest.TestCase):
-
     def test_parses_header(self):
         response = MagicMock()
         response.headers = {"Retry-After": "23"}
@@ -61,7 +60,6 @@ class TestGetRetryAfter(unittest.TestCase):
 
 
 class TestCheckRateLimit(unittest.TestCase):
-
     def test_raises_on_429(self):
         response = MagicMock()
         response.status_code = 429
@@ -85,9 +83,8 @@ class TestCheckRateLimit(unittest.TestCase):
 
 
 class TestRefreshDataset429(unittest.TestCase):
-
-    @patch('time.sleep')
-    @patch('component.requests.post')
+    @patch("time.sleep")
+    @patch("component.requests.post")
     def test_retries_on_429_then_succeeds(self, mock_post, mock_sleep):
         response_429 = MagicMock()
         response_429.status_code = 429
@@ -108,8 +105,8 @@ class TestRefreshDataset429(unittest.TestCase):
         self.assertEqual(mock_post.call_count, 2)
         mock_sleep.assert_called_once_with(23)
 
-    @patch('time.sleep')
-    @patch('component.requests.post')
+    @patch("time.sleep")
+    @patch("component.requests.post")
     def test_returns_false_on_non_429_error(self, mock_post, mock_sleep):
         response_400 = MagicMock()
         response_400.status_code = 400
@@ -129,9 +126,8 @@ class TestRefreshDataset429(unittest.TestCase):
 
 
 class TestGetRequest429(unittest.TestCase):
-
-    @patch('time.sleep')
-    @patch('component.requests.get')
+    @patch("time.sleep")
+    @patch("component.requests.get")
     def test_retries_on_429_then_succeeds(self, mock_get, mock_sleep):
         response_429 = MagicMock()
         response_429.status_code = 429

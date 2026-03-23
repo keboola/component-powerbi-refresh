@@ -7,17 +7,16 @@ import json
 import logging
 import time
 from datetime import datetime  # noqa
-from typing import Union
-import requests
-import backoff
 
+import backoff
+import requests
 from keboola.component.base import ComponentBase, sync_action
 from keboola.component.exceptions import UserException
 from requests import RequestException
 
 # configuration variables
-KEY_DATASET = 'dataset_list'
-KEY_WORKSPACE = 'workspace'
+KEY_DATASET = "dataset_list"
+KEY_WORKSPACE = "workspace"
 
 STATE_AUTH_ID = "auth_id"
 STATE_REFRESH_TOKEN = "#refresh_token"
@@ -29,11 +28,10 @@ RATE_LIMIT_DEFAULT_WAIT = 60  # seconds
 
 class TooManyRequestsError(Exception):
     """Raised when the API returns HTTP 429 Too Many Requests."""
+
     def __init__(self, retry_after: int | None = None):
         self.retry_after = retry_after
-        super().__init__(
-            f"Rate limited by PowerBI API (HTTP 429). Retry after: {retry_after}s"
-        )
+        super().__init__(f"Rate limited by PowerBI API (HTTP 429). Retry after: {retry_after}s")
 
 
 class Component(ComponentBase):
@@ -62,10 +60,12 @@ class Component(ComponentBase):
     def _client_init(self):
         self.authorization = self.configuration.config_data["authorization"]
         access_token, self.refresh_token = self.get_oauth_token()
-        self.write_state_file({
-                    STATE_REFRESH_TOKEN: self.refresh_token,
-                    STATE_AUTH_ID: self.authorization.get("oauth_api", {}).get("credentials", {}).get("id", "")
-                    })
+        self.write_state_file(
+            {
+                STATE_REFRESH_TOKEN: self.refresh_token,
+                STATE_AUTH_ID: self.authorization.get("oauth_api", {}).get("credentials", {}).get("id", ""),
+            }
+        )
 
         self.header = access_token
 
@@ -105,10 +105,7 @@ class Component(ComponentBase):
 
     @header.setter
     def header(self, access_token):
-        self._header = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {access_token}"
-        }
+        self._header = {"Content-Type": "application/json", "Authorization": f"Bearer {access_token}"}
 
     def load_datasets(self):
         """
@@ -122,7 +119,8 @@ class Component(ComponentBase):
         if not dataset_list:
             if not datasets:
                 raise UserException(
-                    "To refresh Power BI datasets, you must specify datasets in Configuration Parameters.")
+                    "To refresh Power BI datasets, you must specify datasets in Configuration Parameters."
+                )
         else:
             datasets = dataset_list
 
@@ -174,7 +172,7 @@ class Component(ComponentBase):
             "client_secret": client_secret,
             "grant_type": "refresh_token",
             "resource": "https://analysis.windows.net/powerbi/api",
-            "refresh_token": refresh_token
+            "refresh_token": refresh_token,
         }
 
         response = requests.post(url, headers=headers, data=payload)
@@ -201,13 +199,10 @@ class Component(ComponentBase):
         """Raise TooManyRequestsError if the response is HTTP 429."""
         if response.status_code == 429:
             retry_after = self._get_retry_after(response)
-            logging.warning(
-                f"Rate limited by PowerBI API (HTTP 429). Retry after {retry_after} seconds."
-            )
+            logging.warning(f"Rate limited by PowerBI API (HTTP 429). Retry after {retry_after} seconds.")
             raise TooManyRequestsError(retry_after=retry_after)
 
-    @backoff.on_exception(backoff.expo, Exception, max_tries=3,
-                          giveup=lambda e: isinstance(e, TooManyRequestsError))
+    @backoff.on_exception(backoff.expo, Exception, max_tries=3, giveup=lambda e: isinstance(e, TooManyRequestsError))
     @backoff.on_exception(
         backoff.runtime,
         TooManyRequestsError,
@@ -215,7 +210,7 @@ class Component(ComponentBase):
         jitter=None,
         max_tries=RATE_LIMIT_MAX_RETRIES,
     )
-    def refresh_dataset(self, group_url, dataset) -> Union[requests.models.Response, bool]:
+    def refresh_dataset(self, group_url, dataset) -> requests.models.Response | bool:
         refresh_url = f"https://api.powerbi.com/v1.0/myorg/{group_url}/datasets/{dataset}/refreshes"
         # https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/refresh-dataset-in-group#limitations
         payload = {"notifyOption": "MailOnFailure"}
@@ -228,8 +223,8 @@ class Component(ComponentBase):
             self._check_rate_limit(r)
             msg = json.loads(r.text)
             logging.error(
-                f"Failed to refresh dataset: error code: {msg['error']['code']} "
-                f"message: {msg['error']['message']}")
+                f"Failed to refresh dataset: error code: {msg['error']['code']} message: {msg['error']['message']}"
+            )
             return False
 
         except TooManyRequestsError:
@@ -268,27 +263,33 @@ class Component(ComponentBase):
         if response.status_code == 403:
             try:
                 error_message = response.json()
-                if error_message.get('error', {}).get('code') == 'TokenExpired':
+                if error_message.get("error", {}).get("code") == "TokenExpired":
                     access_token, _ = self.get_oauth_token()
                     self.header = access_token
                     response = requests.get(url=url, headers=self.header)
             except ValueError:
-                raise UserException(f"Request for url {url} failed with status code: {response.status_code}"
-                                    f" and message: {response.text}")
+                raise UserException(
+                    f"Request for url {url} failed with status code: {response.status_code}"
+                    f" and message: {response.text}"
+                )
 
         return response
 
     def process_status(self, request, request_list, success_list, running_list):
         if request.status_code != 200:
-            raise UserException(f"Failed to refresh dataset with ID: {request_list[0]} "
-                                f"with status code: {request.status_code} and message: "
-                                f"{request.text}")
+            raise UserException(
+                f"Failed to refresh dataset with ID: {request_list[0]} "
+                f"with status code: {request.status_code} and message: "
+                f"{request.text}"
+            )
 
-        selected_status = [f['status'] for f in request.json()['value'] if request_list[1] in f['requestId']]
+        selected_status = [f["status"] for f in request.json()["value"] if request_list[1] in f["requestId"]]
 
         if not selected_status:
-            logging.error(f"Refresh request has been successful but the component cannot obtain refresh "
-                          f"status for dataset refresh with id {request_list[1]}")
+            logging.error(
+                f"Refresh request has been successful but the component cannot obtain refresh "
+                f"status for dataset refresh with id {request_list[1]}"
+            )
             self.requestid_array.remove([request_list[0], request_list[1]])
             return
 
@@ -302,8 +303,9 @@ class Component(ComponentBase):
             self.requestid_array.remove([request_list[0], request_list[1]])
             if not self.alldatasets:
                 content = json.loads(request.content)
-                raise UserException(f"Dataset {self.failed_list} finished with error "
-                                    f"{content['value'][1]['serviceExceptionJson']}")
+                raise UserException(
+                    f"Dataset {self.failed_list} finished with error {content['value'][1]['serviceExceptionJson']}"
+                )
         elif status == "Disabled":
             logging.info(f"Dataset {request_list[0]} is disabled")
             self.requestid_array.remove([request_list[0], request_list[1]])
@@ -317,7 +319,6 @@ class Component(ComponentBase):
             running_list = []
             success_list = []
             for requestid in self.requestid_array:
-
                 try:
                     request = self.refresh_status(requestid[0], group_url)
                 except (RequestException, TooManyRequestsError) as e:
