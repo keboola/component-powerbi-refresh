@@ -1,50 +1,6 @@
 [
   {
-    "name": "01_select_workspace",
-    "description": "Sync action: list all available Power BI workspaces",
-    "config": {
-      "action": "selectWorkspace",
-      "parameters": {
-        "workspace": "",
-        "dataset_list": [],
-        "wait": "No"
-      },
-      "authorization": {
-        "oauth_api": {
-          "credentials": {
-            "id": "DUMMY_CRED_ID",
-            "appKey": "DUMMY_CLIENT_ID",
-            "#appSecret": "DUMMY_CLIENT_SECRET",
-            "#data": "{\"refresh_token\": \"DUMMY_REFRESH_TOKEN\", \"access_token\": \"DUMMY_ACCESS_TOKEN\"}"
-          }
-        }
-      }
-    }
-  },
-  {
-    "name": "02_select_dataset",
-    "description": "Sync action: list all datasets in the specified workspace",
-    "config": {
-      "action": "selectDataset",
-      "parameters": {
-        "workspace": "27582307-ab04-4269-a6e7-4d1c803ba6ba",
-        "dataset_list": [],
-        "wait": "No"
-      },
-      "authorization": {
-        "oauth_api": {
-          "credentials": {
-            "id": "DUMMY_CRED_ID",
-            "appKey": "DUMMY_CLIENT_ID",
-            "#appSecret": "DUMMY_CLIENT_SECRET",
-            "#data": "{\"refresh_token\": \"DUMMY_REFRESH_TOKEN\", \"access_token\": \"DUMMY_ACCESS_TOKEN\"}"
-          }
-        }
-      }
-    }
-  },
-  {
-    "name": "03_run_refresh_no_wait",
+    "name": "01_run_refresh_no_wait",
     "description": "Trigger dataset refresh and exit immediately (wait=No)",
     "config": {
       "action": "run",
@@ -68,7 +24,7 @@
     }
   },
   {
-    "name": "04_run_refresh_with_wait",
+    "name": "02_run_refresh_with_wait",
     "description": "Trigger dataset refresh and wait for completion (wait=Yes, alldatasets=Yes)",
     "config": {
       "action": "run",
@@ -81,28 +37,6 @@
         "alldatasets": "Yes",
         "interval": 30,
         "timeout": 3600
-      },
-      "authorization": {
-        "oauth_api": {
-          "credentials": {
-            "id": "DUMMY_CRED_ID",
-            "appKey": "DUMMY_CLIENT_ID",
-            "#appSecret": "DUMMY_CLIENT_SECRET",
-            "#data": "{\"refresh_token\": \"DUMMY_REFRESH_TOKEN\", \"access_token\": \"DUMMY_ACCESS_TOKEN\"}"
-          }
-        }
-      }
-    }
-  },
-  {
-    "name": "05_select_dataset_default_workspace",
-    "description": "Sync action: list datasets in the default (personal) workspace",
-    "config": {
-      "action": "selectDataset",
-      "parameters": {
-        "workspace": "",
-        "dataset_list": [],
-        "wait": "No"
       },
       "authorization": {
         "oauth_api": {
