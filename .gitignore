@@ -16,3 +16,7 @@ tests/functional/*/source/data/config.secrets.json
 
 # Test runtime dir (regenerated during replay)
 tests/functional/*/source/data/out/
+
+# uv / Python build artefacts
+.venv/
+*.egg-info/
