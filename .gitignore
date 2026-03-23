@@ -9,3 +9,11 @@ example/.pydevproject
 # kbc datafolder
 data/
 tmp/
+
+# VCR secrets - never commit real credentials
+secrets.json
+tests/functional/*/source/data/config.secrets.json
+
+# Test runtime dirs (regenerated during replay)
+tests/functional/*/source/data/out/
+tests/functional/*/source/data/in/
