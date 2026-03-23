@@ -7,7 +7,7 @@ env:
   KBC_DEVELOPERPORTAL_APP: "kds-team.app-powerbi-refresh"
   KBC_DEVELOPERPORTAL_VENDOR: "kds-team"
   DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USER }}
-  KBC_DEVELOPERPORTAL_USERNAME: ${{ vars.KBC_DEVELOPERPORTAL_USERNAME }}
+  KBC_DEVELOPERPORTAL_USERNAME: "kds-team+github"
 
   # repository secrets:
   DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
