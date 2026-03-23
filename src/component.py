@@ -27,7 +27,7 @@ RATE_LIMIT_MAX_RETRIES = 10
 RATE_LIMIT_DEFAULT_WAIT = 60  # seconds
 
 
-class TooManyRequestsError(Exception):
+class TooManyRequestsError(UserException):
     """Raised when the API returns HTTP 429 Too Many Requests."""
     def __init__(self, retry_after: int | None = None):
         self.retry_after = retry_after
@@ -206,7 +206,8 @@ class Component(ComponentBase):
             )
             raise TooManyRequestsError(retry_after=retry_after)
 
-    @backoff.on_exception(backoff.expo, Exception, max_tries=3)
+    @backoff.on_exception(backoff.expo, Exception, max_tries=3,
+                          giveup=lambda e: isinstance(e, TooManyRequestsError))
     @backoff.on_exception(
         backoff.runtime,
         TooManyRequestsError,
