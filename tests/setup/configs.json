@@ -1,0 +1,53 @@
+[
+  {
+    "name": "01_run_refresh_no_wait",
+    "description": "Trigger dataset refresh and exit immediately (wait=No)",
+    "config": {
+      "action": "run",
+      "parameters": {
+        "workspace": "27582307-ab04-4269-a6e7-4d1c803ba6ba",
+        "dataset_list": [
+          "3ad5e537-2352-43f2-a30e-14c6eb11712e"
+        ],
+        "wait": "No"
+      },
+      "authorization": {
+        "oauth_api": {
+          "credentials": {
+            "id": "DUMMY_CRED_ID",
+            "appKey": "DUMMY_CLIENT_ID",
+            "#appSecret": "DUMMY_CLIENT_SECRET",
+            "#data": "{\"refresh_token\": \"DUMMY_REFRESH_TOKEN\", \"access_token\": \"DUMMY_ACCESS_TOKEN\"}"
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "02_run_refresh_with_wait",
+    "description": "Trigger dataset refresh and wait for completion (wait=Yes, alldatasets=Yes)",
+    "config": {
+      "action": "run",
+      "parameters": {
+        "workspace": "27582307-ab04-4269-a6e7-4d1c803ba6ba",
+        "dataset_list": [
+          "3ad5e537-2352-43f2-a30e-14c6eb11712e"
+        ],
+        "wait": "Yes",
+        "alldatasets": "Yes",
+        "interval": 30,
+        "timeout": 3600
+      },
+      "authorization": {
+        "oauth_api": {
+          "credentials": {
+            "id": "DUMMY_CRED_ID",
+            "appKey": "DUMMY_CLIENT_ID",
+            "#appSecret": "DUMMY_CLIENT_SECRET",
+            "#data": "{\"refresh_token\": \"DUMMY_REFRESH_TOKEN\", \"access_token\": \"DUMMY_ACCESS_TOKEN\"}"
+          }
+        }
+      }
+    }
+  }
+]

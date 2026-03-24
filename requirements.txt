@@ -1,4 +1,6 @@
-keboola.component==1.4.4
+keboola.component>=1.9.0
+keboola.datadirtest>=2.0.0
+pytest>=9.0.0
 mock
 freezegun
 requests==2.32.3
