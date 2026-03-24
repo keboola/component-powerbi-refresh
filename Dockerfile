@@ -11,7 +11,7 @@ COPY src/ src/
 COPY scripts/ scripts/
 
 FROM base AS test
-RUN uv sync --all-groups --frozen
+RUN uv sync --all-groups --frozen --no-install-project
 COPY tests/ tests/
 RUN uv run ruff check
 CMD ["uv", "run", "pytest", "tests/", "-v"]
