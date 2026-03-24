@@ -56,8 +56,7 @@ wheels = [
 
 [[package]]
 name = "component-powerbi-refresh"
-version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "backoff" },
     { name = "keboola-component" },
@@ -68,7 +67,6 @@ dependencies = [
 dev = [
     { name = "freezegun" },
     { name = "keboola-datadirtest" },
-    { name = "mock" },
     { name = "pytest" },
     { name = "ruff" },
 ]
@@ -84,7 +82,6 @@ requires-dist = [
 dev = [
     { name = "freezegun", specifier = ">=1.5.1" },
     { name = "keboola-datadirtest", specifier = ">=2.0.0" },
-    { name = "mock", specifier = ">=5.1.0" },
     { name = "pytest", specifier = ">=9.0.0" },
     { name = "ruff", specifier = ">=0.15.0" },
 ]
@@ -168,15 +165,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/6e/f9/a5210a2c85944c1a46fd9d8ae5064443cc7d48100134457d4dead401b10b/keboola_vcr-0.3.0.tar.gz", hash = "sha256:8bd74d010e991c48d1faaf505017a60008720f0ee57bdee6a9546987a502f6bd", size = 29000, upload-time = "2026-03-19T16:19:48.912Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2f/fd/38fdd367b90cb412b29d6f65646a9d91a78c7c163e3f5700f20d4a90f34a/keboola_vcr-0.3.0-py3-none-any.whl", hash = "sha256:162bb5c844fecc95fb1bc4a1b3054987835be887edda131806793e1b9019f1cc", size = 31641, upload-time = "2026-03-19T16:19:48.047Z" },
-]
-
-[[package]]
-name = "mock"
-version = "5.2.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/07/8c/14c2ae915e5f9dca5a22edd68b35be94400719ccfa068a03e0fb63d0f6f6/mock-5.2.0.tar.gz", hash = "sha256:4e460e818629b4b173f32d08bf30d3af8123afbb8e04bb5707a1fd4799e503f0", size = 92796, upload-time = "2025-03-03T12:31:42.911Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/bd/d9/617e6af809bf3a1d468e0d58c3997b1dc219a9a9202e650d30c2fc85d481/mock-5.2.0-py3-none-any.whl", hash = "sha256:7ba87f72ca0e915175596069dbbcc7c75af7b5e9b9bc107ad6349ede0819982f", size = 31617, upload-time = "2025-03-03T12:31:41.518Z" },
 ]
 
 [[package]]

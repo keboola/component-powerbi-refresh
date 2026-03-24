@@ -72,7 +72,8 @@ jobs:
         id: deploy_ready
         run: |
           if [[ "${{ github.ref }}" == refs/tags/* \
-            && "${{ steps.tag.outputs.is_semantic_tag }}" == "true" ]]; then
+            && "${{ steps.tag.outputs.is_semantic_tag }}" == "true" \
+            && "${{ steps.default_branch.outputs.is_default_branch }}" == "true" ]]; then
               echo "is_deploy_ready=true" | tee -a $GITHUB_OUTPUT
           else
               echo "is_deploy_ready=false" | tee -a $GITHUB_OUTPUT
