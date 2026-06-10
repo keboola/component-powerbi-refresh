@@ -56,6 +56,7 @@ class Component(ComponentBase):
         self.success_list = []
         self.failed_list = []
         self.requestid_array = []
+        self.dataset_names: dict[str, str] = {}
 
     def _client_init(self):
         self.authorization = self.configuration.config_data["authorization"]
@@ -69,17 +70,36 @@ class Component(ComponentBase):
 
         self.header = access_token
 
+    def _get_dataset_name(self, dataset_id: str) -> str:
+        """Returns a display string with the dataset name if available, otherwise just the ID."""
+        name = getattr(self, "dataset_names", {}).get(dataset_id)
+        if name:
+            return f"'{name}' ({dataset_id})"
+        return dataset_id
+
+    def _load_dataset_names(self, group_url: str) -> None:
+        """Fetches dataset names from the PowerBI API to enrich log and error messages."""
+        try:
+            refresh_url = f"https://api.powerbi.com/v1.0/myorg/{group_url}/datasets"
+            response = self._get_request(refresh_url)
+            response.raise_for_status()
+            for ds in response.json().get("value", []):
+                self.dataset_names[ds["id"]] = ds["name"]
+        except Exception as e:
+            logging.warning(f"Could not fetch dataset names: {e}")
+
     def run(self):
         self._client_init()
         self.load_datasets()
         self.check_dataset_inputs()
 
         group_url = f"groups/{self.workspace}" if self.workspace else ""
+        self._load_dataset_names(group_url)
 
         logging.info(f"Processing datasets: {self.dataset_array}")
         for dataset in self.dataset_array:
             dataset_id = dataset["dataset_input"]
-            logging.info(f"Refreshing dataset {dataset_id}")
+            logging.info(f"Refreshing dataset {self._get_dataset_name(dataset_id)}")
             response = self.refresh_dataset(group_url, dataset_id)
             if response:
                 self.success_list.append(dataset_id)
@@ -92,10 +112,11 @@ class Component(ComponentBase):
             logging.debug(f"Waiting for dataset refreshes to finish. Timeout: {self.timeout}")
             self.check_status(group_url)
         else:
-            logging.info(f"List refreshed: {self.success_list}")
+            logging.info(f"List refreshed: {[self._get_dataset_name(d) for d in self.success_list]}")
 
         if self.failed_list:
-            raise UserException(f"Any of dataset refreshes finished with error. {self.failed_list}")
+            failed_display = [self._get_dataset_name(d) for d in self.failed_list]
+            raise UserException(f"Any of dataset refreshes finished with error. {failed_display}")
 
         logging.info("PowerBI Refresh finished")
 
@@ -218,7 +239,7 @@ class Component(ComponentBase):
         try:
             r = requests.post(refresh_url, headers=self.header, data=payload)
             if r.status_code == 202:
-                logging.info(f"Dataset {dataset} refresh accepted by PowerBI API.")
+                logging.info(f"Dataset {self._get_dataset_name(dataset)} refresh accepted by PowerBI API.")
                 return r
             self._check_rate_limit(r)
             msg = json.loads(r.text)
@@ -278,7 +299,7 @@ class Component(ComponentBase):
     def process_status(self, request, request_list, success_list, running_list):
         if request.status_code != 200:
             raise UserException(
-                f"Failed to refresh dataset with ID: {request_list[0]} "
+                f"Failed to refresh dataset {self._get_dataset_name(request_list[0])} "
                 f"with status code: {request.status_code} and message: "
                 f"{request.text}"
             )
@@ -303,16 +324,17 @@ class Component(ComponentBase):
             self.requestid_array.remove([request_list[0], request_list[1]])
             if not self.alldatasets:
                 content = json.loads(request.content)
+                failed_display = [self._get_dataset_name(d) for d in self.failed_list]
                 raise UserException(
-                    f"Dataset {self.failed_list} finished with error {content['value'][1]['serviceExceptionJson']}"
+                    f"Dataset {failed_display} finished with error {content['value'][1]['serviceExceptionJson']}"
                 )
         elif status == "Disabled":
-            logging.info(f"Dataset {request_list[0]} is disabled")
+            logging.info(f"Dataset {self._get_dataset_name(request_list[0])} is disabled")
             self.requestid_array.remove([request_list[0], request_list[1]])
         elif status == "Unknown":
             running_list.append(request_list[0])
         else:
-            raise UserException(f"Unknown error in dataset {request_list[0]}")
+            raise UserException(f"Unknown error in dataset {self._get_dataset_name(request_list[0])}")
 
     def check_status(self, group_url) -> None:
         while self.requestid_array != [] and time.time() < self.timeout:
@@ -325,9 +347,9 @@ class Component(ComponentBase):
                     raise UserException(f"Refresh status check failed with exception: {e}")
 
                 self.process_status(request, requestid, success_list, running_list)
-                logging.info(f"Running: {running_list}")
-                logging.info(f"Refreshed: {success_list}")
-                logging.info(f"Failed to refresh: {self.failed_list}")
+                logging.info(f"Running: {[self._get_dataset_name(d) for d in running_list]}")
+                logging.info(f"Refreshed: {[self._get_dataset_name(d) for d in success_list]}")
+                logging.info(f"Failed to refresh: {[self._get_dataset_name(d) for d in self.failed_list]}")
             if self.requestid_array:
                 time.sleep(self.interval)
 
