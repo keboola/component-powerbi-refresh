@@ -24,6 +24,7 @@ REQUIRED_PARAMETERS = []
 WAIT_BEFORE_STATUS_CHECK = 10  # seconds
 RATE_LIMIT_MAX_RETRIES = 10
 RATE_LIMIT_DEFAULT_WAIT = 60  # seconds
+NO_FAILURE_DETAIL = "no error detail provided by the PowerBI API"
 
 
 class TooManyRequestsError(Exception):
@@ -296,6 +297,39 @@ class Component(ComponentBase):
 
         return response
 
+    @staticmethod
+    def _get_failure_detail(response: requests.models.Response, request_id: str) -> str:
+        """
+        Best-effort extraction of the PowerBI failure detail from a refresh-history response.
+
+        `serviceExceptionJson` is optional in the PowerBI refresh-history payload, so reading it
+        directly raises KeyError (or IndexError on a short history) and turns a user-actionable
+        refresh failure into an opaque internal error while the UserException message is being
+        built. The original lookup is attempted first, so the message is unchanged whenever it
+        succeeds; otherwise this falls back to the detail of the refresh entry actually being
+        polled, and finally to a plain placeholder.
+        """
+        try:
+            entries = json.loads(response.content)["value"]
+        except (ValueError, KeyError, TypeError):
+            entries = []
+        if not isinstance(entries, list):
+            entries = []
+
+        try:
+            return entries[1]["serviceExceptionJson"]
+        except (KeyError, IndexError, TypeError):
+            logging.debug("PowerBI refresh history did not contain the expected error detail, falling back.")
+
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            entry_request_id = entry.get("requestId")
+            if request_id and isinstance(entry_request_id, str) and request_id in entry_request_id:
+                return entry.get("serviceExceptionJson") or NO_FAILURE_DETAIL
+
+        return NO_FAILURE_DETAIL
+
     def process_status(self, request, request_list, success_list, running_list):
         if request.status_code != 200:
             raise UserException(
@@ -323,11 +357,9 @@ class Component(ComponentBase):
             self.failed_list.append(request_list[0])
             self.requestid_array.remove([request_list[0], request_list[1]])
             if not self.alldatasets:
-                content = json.loads(request.content)
+                failure_detail = self._get_failure_detail(request, request_list[1])
                 failed_display = [self._get_dataset_name(d) for d in self.failed_list]
-                raise UserException(
-                    f"Dataset {failed_display} finished with error {content['value'][1]['serviceExceptionJson']}"
-                )
+                raise UserException(f"Dataset {failed_display} finished with error {failure_detail}")
         elif status == "Disabled":
             logging.info(f"Dataset {self._get_dataset_name(request_list[0])} is disabled")
             self.requestid_array.remove([request_list[0], request_list[1]])

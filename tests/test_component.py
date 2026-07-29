@@ -1,11 +1,13 @@
+import json
 import os
 import unittest
 from unittest import mock
 from unittest.mock import MagicMock, patch
 
 from freezegun import freeze_time
+from keboola.component.exceptions import UserException
 
-from component import RATE_LIMIT_DEFAULT_WAIT, Component, TooManyRequestsError
+from component import NO_FAILURE_DETAIL, RATE_LIMIT_DEFAULT_WAIT, Component, TooManyRequestsError
 
 
 class TestComponent(unittest.TestCase):
@@ -141,6 +143,101 @@ class TestGetRequest429(unittest.TestCase):
         self.assertEqual(result, response_200)
         self.assertEqual(mock_get.call_count, 2)
         mock_sleep.assert_called_once_with(23)
+
+
+def _history_response(entries) -> MagicMock:
+    """Builds a mock PowerBI refresh-history response with the given `value` entries."""
+    response = MagicMock()
+    response.status_code = 200
+    response.content = json.dumps({"value": entries}).encode()
+    response.json.return_value = {"value": entries}
+    return response
+
+
+class TestGetFailureDetail(unittest.TestCase):
+    """`serviceExceptionJson` is optional in the PowerBI refresh-history payload."""
+
+    def test_returns_detail_from_original_lookup(self):
+        response = _history_response(
+            [
+                {"requestId": "req-0", "status": "Completed"},
+                {"requestId": "req-1", "status": "Failed", "serviceExceptionJson": "boom-at-index-1"},
+            ]
+        )
+        self.assertEqual(Component._get_failure_detail(response, "req-1"), "boom-at-index-1")
+
+    def test_falls_back_to_polled_request_when_detail_missing(self):
+        response = _history_response(
+            [
+                {"requestId": "req-0", "status": "Completed"},
+                {"requestId": "req-1", "status": "Failed"},  # no serviceExceptionJson
+                {"requestId": "req-2", "status": "Failed", "serviceExceptionJson": "boom-for-req-2"},
+            ]
+        )
+        self.assertEqual(Component._get_failure_detail(response, "req-2"), "boom-for-req-2")
+
+    def test_placeholder_when_history_has_single_entry(self):
+        response = _history_response([{"requestId": "req-0", "status": "Failed"}])
+        self.assertEqual(Component._get_failure_detail(response, "req-0"), NO_FAILURE_DETAIL)
+
+    def test_placeholder_when_no_entry_carries_a_detail(self):
+        response = _history_response(
+            [
+                {"requestId": "req-0", "status": "Failed"},
+                {"requestId": "req-1", "status": "Failed"},
+            ]
+        )
+        self.assertEqual(Component._get_failure_detail(response, "req-0"), NO_FAILURE_DETAIL)
+
+    def test_placeholder_when_request_id_is_not_a_string(self):
+        """The helper must never raise, even on a null/non-string requestId."""
+        response = _history_response(
+            [
+                {"requestId": None, "status": "Failed"},
+                {"requestId": 42, "status": "Failed"},
+                "not-a-dict",
+            ]
+        )
+        self.assertEqual(Component._get_failure_detail(response, "req-0"), NO_FAILURE_DETAIL)
+
+    def test_placeholder_on_malformed_payload(self):
+        response = MagicMock()
+        response.content = b"not json at all"
+        self.assertEqual(Component._get_failure_detail(response, "req-0"), NO_FAILURE_DETAIL)
+
+
+class TestProcessStatusFailedRaisesUserException(unittest.TestCase):
+    """A failed PowerBI refresh must exit 1 with a readable message, never a bare KeyError (exit 2)."""
+
+    @staticmethod
+    def _component() -> Component:
+        comp = Component.__new__(Component)
+        comp.failed_list = []
+        comp.alldatasets = False
+        comp.dataset_names = {}
+        comp.requestid_array = [["dataset-id", "req-1"]]
+        return comp
+
+    def test_raises_user_exception_with_detail(self):
+        comp = self._component()
+        response = _history_response(
+            [
+                {"requestId": "req-0", "status": "Completed"},
+                {"requestId": "req-1", "status": "Failed", "serviceExceptionJson": "boom-at-index-1"},
+            ]
+        )
+        with self.assertRaises(UserException) as ctx:
+            comp.process_status(response, ["dataset-id", "req-1"], [], [])
+        self.assertIn("boom-at-index-1", str(ctx.exception))
+
+    def test_raises_user_exception_when_detail_is_absent(self):
+        """Regression: this payload used to raise KeyError('serviceExceptionJson') and exit 2."""
+        comp = self._component()
+        response = _history_response([{"requestId": "req-1", "status": "Failed"}])
+        with self.assertRaises(UserException) as ctx:
+            comp.process_status(response, ["dataset-id", "req-1"], [], [])
+        self.assertIn(NO_FAILURE_DETAIL, str(ctx.exception))
+        self.assertIn("dataset-id", str(ctx.exception))
 
 
 if __name__ == "__main__":
