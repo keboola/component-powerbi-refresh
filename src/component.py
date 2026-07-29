@@ -322,7 +322,10 @@ class Component(ComponentBase):
             logging.debug("PowerBI refresh history did not contain the expected error detail, falling back.")
 
         for entry in entries:
-            if request_id and isinstance(entry, dict) and request_id in entry.get("requestId", ""):
+            if not isinstance(entry, dict):
+                continue
+            entry_request_id = entry.get("requestId")
+            if request_id and isinstance(entry_request_id, str) and request_id in entry_request_id:
                 return entry.get("serviceExceptionJson") or NO_FAILURE_DETAIL
 
         return NO_FAILURE_DETAIL

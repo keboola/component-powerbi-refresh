@@ -189,6 +189,17 @@ class TestGetFailureDetail(unittest.TestCase):
         )
         self.assertEqual(Component._get_failure_detail(response, "req-0"), NO_FAILURE_DETAIL)
 
+    def test_placeholder_when_request_id_is_not_a_string(self):
+        """The helper must never raise, even on a null/non-string requestId."""
+        response = _history_response(
+            [
+                {"requestId": None, "status": "Failed"},
+                {"requestId": 42, "status": "Failed"},
+                "not-a-dict",
+            ]
+        )
+        self.assertEqual(Component._get_failure_detail(response, "req-0"), NO_FAILURE_DETAIL)
+
     def test_placeholder_on_malformed_payload(self):
         response = MagicMock()
         response.content = b"not json at all"
