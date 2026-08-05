@@ -17,6 +17,9 @@ from requests import RequestException
 # configuration variables
 KEY_DATASET = "dataset_list"
 KEY_WORKSPACE = "workspace"
+KEY_TENANT_ID = "tenant_id"
+
+DEFAULT_AUTHORITY = "common"
 
 STATE_AUTH_ID = "auth_id"
 STATE_REFRESH_TOKEN = "#refresh_token"
@@ -49,6 +52,7 @@ class Component(ComponentBase):
         parameters = self.configuration.parameters
 
         self.workspace = parameters.get("workspace")
+        self.tenant_id = (parameters.get(KEY_TENANT_ID) or "").strip() or DEFAULT_AUTHORITY
         self.wait = parameters.get("wait", "No") == "Yes"
         self.timeout = time.time() + parameters.get("timeout", 7200)
         self.interval = parameters.get("interval")
@@ -167,7 +171,7 @@ class Component(ComponentBase):
         auth_id = state_file.get(STATE_AUTH_ID, [])
 
         refresh_token = self._get_refresh_token(auth_id, refresh_token, encrypted_data, credentials)
-        response = self._request_new_token(client_id, client_secret, refresh_token)
+        response = self._request_new_token(client_id, client_secret, refresh_token, self.tenant_id)
 
         return response["access_token"], response["refresh_token"]
 
@@ -185,9 +189,9 @@ class Component(ComponentBase):
         return refresh_token
 
     @staticmethod
-    def _request_new_token(client_id, client_secret, refresh_token):
-        """Requests a new access token using the refresh token."""
-        url = "https://login.microsoftonline.com/common/oauth2/token"
+    def _request_new_token(client_id, client_secret, refresh_token, tenant_id=DEFAULT_AUTHORITY):
+        """Requests a new access token using the refresh token from the given tenant authority."""
+        url = f"https://login.microsoftonline.com/{tenant_id or DEFAULT_AUTHORITY}/oauth2/token"
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
         payload = {
             "client_id": client_id,

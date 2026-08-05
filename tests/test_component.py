@@ -240,6 +240,27 @@ class TestProcessStatusFailedRaisesUserException(unittest.TestCase):
         self.assertIn("dataset-id", str(ctx.exception))
 
 
+class TestTokenAuthority(unittest.TestCase):
+    """The token authority must be configurable to support B2B guest accounts."""
+
+    @staticmethod
+    def _post_url(tenant_id=None) -> str:
+        kwargs = {} if tenant_id is None else {"tenant_id": tenant_id}
+        with patch("component.requests.post") as post:
+            post.return_value = MagicMock(status_code=200, json=lambda: {"access_token": "a", "refresh_token": "r"})
+            Component._request_new_token("client", "secret", "refresh", **kwargs)
+        return post.call_args[0][0]
+
+    def test_defaults_to_common_authority(self):
+        self.assertEqual(self._post_url(), "https://login.microsoftonline.com/common/oauth2/token")
+
+    def test_blank_tenant_falls_back_to_common(self):
+        self.assertEqual(self._post_url(""), "https://login.microsoftonline.com/common/oauth2/token")
+
+    def test_uses_tenant_specific_authority(self):
+        self.assertEqual(self._post_url("tenant-guid"), "https://login.microsoftonline.com/tenant-guid/oauth2/token")
+
+
 if __name__ == "__main__":
     # import sys;sys.argv = ['', 'Test.testName']
     unittest.main()

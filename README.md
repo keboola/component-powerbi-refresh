@@ -29,6 +29,7 @@ If you need additional endpoints, please submit your request at [ideas.keboola.c
 PowerBI Refresh Configuration
 =============
 
+ - **Tenant ID** (`tenant_id`) - [OPT] Microsoft Entra tenant ID of the tenant hosting the workspace. Required when authorizing with an external (B2B guest) account, since the default `common` authority resolves to the guest's home tenant. Leave blank to use the default.
  - **PowerBI workspace** (`workspace`) - [REQ] Leave this blank if exporting to the signed-in account's workspace.
  - **PowerBI datasets** (`datasets`) - [REQ] Enter the **ID** of the dataset (not the dataset name).
  - **Wait for end** (`wait`) - [OPT] Check the dataset's refresh status after sending the refresh request.
