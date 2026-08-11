@@ -3,13 +3,6 @@
    "title":"PowerBI Refresh Configuration",
    "required":[],
    "properties":{
-      "tenant_id":{
-         "type":"string",
-         "title":"Tenant ID",
-         "description":"Microsoft Entra tenant ID of the tenant hosting the workspace. Required when authorizing with an external (B2B guest) account, since the default authority resolves to the guest's home tenant. Leave blank to use the default.",
-         "propertyOrder":150,
-         "default":""
-      },
       "workspace":{
          "type":"string",
          "format": "select",
@@ -101,6 +94,13 @@
                "wait":"Yes"
             }
          }
+      },
+      "tenant_id":{
+         "type":"string",
+         "title":"Tenant ID (advanced, optional)",
+         "description":"Leave blank unless you authorized with an external (B2B guest) account. In that case enter the Microsoft Entra tenant ID (GUID) or domain name of the tenant hosting the workspace - the default authority resolves to the guest's own home tenant, so workspaces and datasets of the hosting tenant would not be found.",
+         "propertyOrder":600,
+         "default":""
       }
    }
 }

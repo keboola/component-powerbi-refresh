@@ -260,6 +260,62 @@ class TestTokenAuthority(unittest.TestCase):
     def test_uses_tenant_specific_authority(self):
         self.assertEqual(self._post_url("tenant-guid"), "https://login.microsoftonline.com/tenant-guid/oauth2/token")
 
+    def test_error_response_with_empty_body_raises_user_exception(self):
+        """Regression: an empty/non-JSON error body used to raise JSONDecodeError and exit 2."""
+        response = MagicMock(status_code=404, reason="Not Found", text="")
+        response.json.side_effect = ValueError("no json")
+        with patch("component.requests.post", return_value=response):
+            with self.assertRaises(UserException) as ctx:
+                Component._request_new_token("client", "secret", "refresh", tenant_id="contoso.onmicrosoft.com")
+        self.assertIn("404", str(ctx.exception))
+        self.assertIn(NO_FAILURE_DETAIL, str(ctx.exception))
+
+    def test_error_response_with_text_body_surfaces_text(self):
+        response = MagicMock(status_code=500, reason="Server Error", text="  upstream exploded  ")
+        response.json.side_effect = ValueError("no json")
+        with patch("component.requests.post", return_value=response):
+            with self.assertRaises(UserException) as ctx:
+                Component._request_new_token("client", "secret", "refresh")
+        self.assertIn("upstream exploded", str(ctx.exception))
+
+
+class TestResolveTenantId(unittest.TestCase):
+    """Blank keeps the historical `common` authority; malformed input fails cleanly, not with a traceback."""
+
+    def test_missing_and_blank_values_default_to_common(self):
+        for raw in (None, "", "   ", False, 0):
+            with self.subTest(raw=raw):
+                self.assertEqual(Component._resolve_tenant_id(raw), "common")
+
+    def test_strips_surrounding_whitespace(self):
+        self.assertEqual(Component._resolve_tenant_id("  contoso.onmicrosoft.com  "), "contoso.onmicrosoft.com")
+
+    def test_accepts_guid_and_domain(self):
+        for raw in ("11111111-2222-3333-4444-555555555555", "contoso.onmicrosoft.com", "common"):
+            with self.subTest(raw=raw):
+                self.assertEqual(Component._resolve_tenant_id(raw), raw)
+
+    def test_non_string_truthy_value_does_not_crash(self):
+        """A config written via the API could supply a number; it must not raise AttributeError."""
+        self.assertEqual(Component._resolve_tenant_id(12345), "12345")
+
+    def test_rejects_url_structured_values(self):
+        malformed = [
+            "https://login.microsoftonline.com/11111111-2222-3333-4444-555555555555/",
+            "common/oauth2/token",
+            "common?x=",
+            "common#frag",
+            "../../foo",
+            "two words",
+            "tenant\nid",
+            "-leading-dash-is-not-a-tenant-",
+        ]
+        for raw in malformed:
+            with self.subTest(raw=raw):
+                with self.assertRaises(UserException) as ctx:
+                    Component._resolve_tenant_id(raw)
+                self.assertIn("not a valid Microsoft Entra tenant identifier", str(ctx.exception))
+
 
 if __name__ == "__main__":
     # import sys;sys.argv = ['', 'Test.testName']

@@ -29,13 +29,17 @@ If you need additional endpoints, please submit your request at [ideas.keboola.c
 PowerBI Refresh Configuration
 =============
 
- - **Tenant ID** (`tenant_id`) - [OPT] Microsoft Entra tenant ID of the tenant hosting the workspace. Required when authorizing with an external (B2B guest) account, since the default `common` authority resolves to the guest's home tenant. Leave blank to use the default.
  - **PowerBI workspace** (`workspace`) - [REQ] Leave this blank if exporting to the signed-in account's workspace.
  - **PowerBI datasets** (`datasets`) - [REQ] Enter the **ID** of the dataset (not the dataset name).
  - **Wait for end** (`wait`) - [OPT] Check the dataset's refresh status after sending the refresh request.
  - **Wait for all datasets** (`alldatasets`) - [OPT] End the job with an error if any dataset fails to refresh (only works when "Wait for end" is set to `Yes`).
  - **Interval** (`interval`) - [OPT] Status check interval (only works when "Wait for end" is set to `Yes`).
  - **Timeout** (`timeout`) - [OPT] Status check timeout (only works when "Wait for end" is `Yes`).
+ - **Tenant ID** (`tenant_id`) - [OPT] Advanced. Leave blank unless you authorized with an external (B2B guest) account. By default the token is requested from the `common` authority, which resolves to the signed-in user's *home* tenant; for a guest account that is not the tenant hosting the workspace, so its workspaces and datasets are not visible and refreshes fail. Set this to the Microsoft Entra tenant ID (GUID) or domain name of the tenant hosting the workspace. Enter the bare identifier, not a full URL.
+
+### Using a B2B guest account
+
+If the workspace lives in a tenant you are only a guest in, set **Tenant ID** to that tenant's identifier. If refreshes still fail with a token error immediately after setting it, re-run the OAuth authorization for the configuration so a fresh token is issued for that tenant.
 
 Sample Configuration
 =============
