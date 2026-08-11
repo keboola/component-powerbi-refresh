@@ -5,6 +5,7 @@ Template Component main class.
 
 import json
 import logging
+import re
 import time
 from datetime import datetime  # noqa
 
@@ -17,6 +18,9 @@ from requests import RequestException
 # configuration variables
 KEY_DATASET = "dataset_list"
 KEY_WORKSPACE = "workspace"
+KEY_TENANT_ID = "tenant_id"
+
+DEFAULT_AUTHORITY = "common"
 
 STATE_AUTH_ID = "auth_id"
 STATE_REFRESH_TOKEN = "#refresh_token"
@@ -25,6 +29,10 @@ WAIT_BEFORE_STATUS_CHECK = 10  # seconds
 RATE_LIMIT_MAX_RETRIES = 10
 RATE_LIMIT_DEFAULT_WAIT = 60  # seconds
 NO_FAILURE_DETAIL = "no error detail provided by the PowerBI API"
+# Entra accepts either a tenant GUID or a domain name as the authority. Anything with URL
+# structure (scheme, slash, query, fragment, whitespace) would silently mis-target the token
+# endpoint, so it is rejected up front rather than sent to Microsoft.
+TENANT_ID_PATTERN = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$")
 
 
 class TooManyRequestsError(Exception):
@@ -49,6 +57,7 @@ class Component(ComponentBase):
         parameters = self.configuration.parameters
 
         self.workspace = parameters.get("workspace")
+        self.tenant_id = self._resolve_tenant_id(parameters.get(KEY_TENANT_ID))
         self.wait = parameters.get("wait", "No") == "Yes"
         self.timeout = time.time() + parameters.get("timeout", 7200)
         self.interval = parameters.get("interval")
@@ -167,7 +176,7 @@ class Component(ComponentBase):
         auth_id = state_file.get(STATE_AUTH_ID, [])
 
         refresh_token = self._get_refresh_token(auth_id, refresh_token, encrypted_data, credentials)
-        response = self._request_new_token(client_id, client_secret, refresh_token)
+        response = self._request_new_token(client_id, client_secret, refresh_token, self.tenant_id)
 
         return response["access_token"], response["refresh_token"]
 
@@ -185,9 +194,30 @@ class Component(ComponentBase):
         return refresh_token
 
     @staticmethod
-    def _request_new_token(client_id, client_secret, refresh_token):
-        """Requests a new access token using the refresh token."""
-        url = "https://login.microsoftonline.com/common/oauth2/token"
+    def _resolve_tenant_id(raw_tenant_id) -> str:
+        """Resolves the Entra authority to request the token from.
+
+        Blank or missing keeps the historical `common` authority, so existing configurations
+        are unaffected. A non-empty value must be a bare tenant identifier.
+        """
+        tenant_id = str(raw_tenant_id or "").strip()
+        if not tenant_id:
+            return DEFAULT_AUTHORITY
+
+        if not TENANT_ID_PATTERN.fullmatch(tenant_id):
+            raise UserException(
+                f"Tenant ID '{tenant_id}' is not a valid Microsoft Entra tenant identifier. "
+                "Use the tenant's GUID (e.g. '11111111-2222-3333-4444-555555555555') or its "
+                "domain name (e.g. 'contoso.onmicrosoft.com') - not a full URL, and without "
+                "spaces, slashes, '?' or '#'. Leave the field blank to use the default authority."
+            )
+
+        return tenant_id
+
+    @staticmethod
+    def _request_new_token(client_id, client_secret, refresh_token, tenant_id=DEFAULT_AUTHORITY):
+        """Requests a new access token using the refresh token from the given tenant authority."""
+        url = f"https://login.microsoftonline.com/{tenant_id or DEFAULT_AUTHORITY}/oauth2/token"
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
         payload = {
             "client_id": client_id,
@@ -199,9 +229,14 @@ class Component(ComponentBase):
 
         response = requests.post(url, headers=headers, data=payload)
         if response.status_code != 200:
+            try:
+                detail = response.json()
+            except ValueError:
+                # Some error responses from the token endpoint carry an empty or non-JSON body.
+                detail = response.text.strip() or NO_FAILURE_DETAIL
             raise UserException(
                 f"Unable to refresh access token. Status code: {response.status_code} "
-                f"Reason: {response.reason}, message: {response.json()}"
+                f"Reason: {response.reason}, message: {detail}"
             )
 
         return response.json()
