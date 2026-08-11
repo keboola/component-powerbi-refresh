@@ -35,11 +35,15 @@ PowerBI Refresh Configuration
  - **Wait for all datasets** (`alldatasets`) - [OPT] End the job with an error if any dataset fails to refresh (only works when "Wait for end" is set to `Yes`).
  - **Interval** (`interval`) - [OPT] Status check interval (only works when "Wait for end" is set to `Yes`).
  - **Timeout** (`timeout`) - [OPT] Status check timeout (only works when "Wait for end" is `Yes`).
- - **Tenant ID** (`tenant_id`) - [OPT] Advanced. Leave blank unless you authorized with an external (B2B guest) account. By default the token is requested from the `common` authority, which resolves to the signed-in user's *home* tenant; for a guest account that is not the tenant hosting the workspace, so its workspaces and datasets are not visible and refreshes fail. Set this to the Microsoft Entra tenant ID (GUID) or domain name of the tenant hosting the workspace. Enter the bare identifier, not a full URL.
+ - **Tenant ID** (`tenant_id`) - [OPT] Leave blank unless you authorized with an external (B2B guest) account. By default the token is requested from the `common` authority, which resolves to the signed-in user's *home* tenant; for a guest account that is not the tenant hosting the workspace, so its workspaces and datasets are not visible and refreshes fail. Set this to the Microsoft Entra tenant ID (GUID) or domain name of the tenant hosting the workspace. Enter the bare identifier, not a full URL.
 
 ### Using a B2B guest account
 
-If the workspace lives in a tenant you are only a guest in, set **Tenant ID** to that tenant's identifier. If refreshes still fail with a token error immediately after setting it, re-run the OAuth authorization for the configuration so a fresh token is issued for that tenant.
+If the workspace lives in a tenant you are only a guest in, set **Tenant ID** to that tenant's identifier.
+
+Set it **before** using *Load workspaces* and *Reload dataset names*. Those pickers enumerate whichever tenant the token points at, so with the field still blank they list your own home tenant's workspaces — and they do so without any error, which is what makes this failure mode hard to spot. If you already picked a workspace or dataset before setting **Tenant ID**, reload both lists and select again.
+
+If refreshes still fail with a token error immediately after setting it, re-run the OAuth authorization for the configuration so a fresh token is issued for that tenant.
 
 Sample Configuration
 =============
