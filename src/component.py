@@ -215,8 +215,17 @@ class Component(ComponentBase):
         return tenant_id
 
     @staticmethod
+    @backoff.on_exception(backoff.expo, RequestException, max_tries=3)
     def _request_new_token(client_id, client_secret, refresh_token, tenant_id=DEFAULT_AUTHORITY):
-        """Requests a new access token using the refresh token from the given tenant authority."""
+        """Requests a new access token using the refresh token from the given tenant authority.
+
+        The token endpoint is the first network call the component makes, and it was the only
+        HTTP call here without a retry, so a transient connection reset ended the whole job as
+        an opaque internal error (exit 2). The bounded backoff matches the one already used by
+        `_get_request` and re-raises after the last attempt, so a persistent outage still fails
+        the job. A non-200 response is not a `RequestException`, so it is still reported
+        immediately as a `UserException` without any retry.
+        """
         url = f"https://login.microsoftonline.com/{tenant_id or DEFAULT_AUTHORITY}/oauth2/token"
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
         payload = {

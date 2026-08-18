@@ -4,6 +4,7 @@ import unittest
 from unittest import mock
 from unittest.mock import MagicMock, patch
 
+import requests
 from freezegun import freeze_time
 from keboola.component.exceptions import UserException
 
@@ -143,6 +144,77 @@ class TestGetRequest429(unittest.TestCase):
         self.assertEqual(result, response_200)
         self.assertEqual(mock_get.call_count, 2)
         mock_sleep.assert_called_once_with(23)
+
+
+class TestRequestNewTokenRetry(unittest.TestCase):
+    """
+    A transient connection reset on the OAuth token endpoint must be retried.
+
+    Regression: the token POST was the only un-retried HTTP call in the component, so
+    `('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))` propagated
+    out of `run()` and ended the job as an opaque internal error (exit 2).
+    """
+
+    @staticmethod
+    def _token_response() -> MagicMock:
+        response = MagicMock()
+        response.status_code = 200
+        response.json.return_value = {"access_token": "new-access-token", "refresh_token": "new-refresh-token"}
+        return response
+
+    @patch("time.sleep")
+    @patch("component.requests.post")
+    def test_retries_on_connection_reset_then_succeeds(self, mock_post, mock_sleep):
+        mock_post.side_effect = [
+            requests.exceptions.ConnectionError(
+                "('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))"
+            ),
+            self._token_response(),
+        ]
+
+        result = Component._request_new_token("client-id", "client-secret", "refresh-token")
+
+        self.assertEqual(result, {"access_token": "new-access-token", "refresh_token": "new-refresh-token"})
+        self.assertEqual(mock_post.call_count, 2)
+
+    @patch("time.sleep")
+    @patch("component.requests.post")
+    def test_reraises_after_last_attempt(self, mock_post, mock_sleep):
+        """A persistent outage must still fail the job - the retry smooths blips, it never swallows."""
+        mock_post.side_effect = requests.exceptions.ConnectionError("('Connection aborted.', ConnectionResetError())")
+
+        with self.assertRaises(requests.exceptions.ConnectionError):
+            Component._request_new_token("client-id", "client-secret", "refresh-token")
+
+        self.assertEqual(mock_post.call_count, 3)
+
+    @patch("time.sleep")
+    @patch("component.requests.post")
+    def test_succeeds_first_try_without_sleeping(self, mock_post, mock_sleep):
+        """Happy path is untouched: one call, no backoff sleep."""
+        mock_post.return_value = self._token_response()
+
+        result = Component._request_new_token("client-id", "client-secret", "refresh-token")
+
+        self.assertEqual(result, {"access_token": "new-access-token", "refresh_token": "new-refresh-token"})
+        self.assertEqual(mock_post.call_count, 1)
+        mock_sleep.assert_not_called()
+
+    @patch("time.sleep")
+    @patch("component.requests.post")
+    def test_non_200_still_raises_user_exception_without_retry(self, mock_post, mock_sleep):
+        """A rejected token is not transient - it must stay an immediate, un-retried user error."""
+        response_401 = MagicMock()
+        response_401.status_code = 401
+        response_401.reason = "Unauthorized"
+        response_401.json.return_value = {"error": "invalid_grant"}
+        mock_post.return_value = response_401
+
+        with self.assertRaises(UserException):
+            Component._request_new_token("client-id", "client-secret", "refresh-token")
+
+        self.assertEqual(mock_post.call_count, 1)
+        mock_sleep.assert_not_called()
 
 
 def _history_response(entries) -> MagicMock:
